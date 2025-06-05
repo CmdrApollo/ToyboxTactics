@@ -1,0 +1,71 @@
+{
+	"parts": [
+		{
+			"name": "leftleg",
+			"color": "lightyellow",
+			"shape": "line",
+			"definition": [
+				[
+					-0.25,
+					0.25
+				],
+				[
+					-0.25,
+					1.0
+				],
+				0.125
+			]
+		},
+		{
+			"name": "rightleg",
+			"color": "lightyellow",
+			"shape": "line",
+			"definition": [
+				[
+					0.25,
+					0.25
+				],
+				[
+					0.25,
+					1.0
+				],
+				0.125
+			]
+		},
+		{
+			"name": "body",
+			"color": "plum",
+			"shape": "circle",
+			"definition": [
+				[
+					0,
+					0
+				],
+				0.75
+			]
+		},
+		{
+			"name": "head",
+			"color": "white",
+			"shape": "poly",
+			"definition": [
+				[
+					-0.375,
+					-1.0
+				],
+				[
+					0.375,
+					-1.0
+				],
+				[
+					0.375,
+					-0.25
+				],
+				[
+					-0.375,
+					-0.25
+				]
+			]
+		}
+	]
+}
