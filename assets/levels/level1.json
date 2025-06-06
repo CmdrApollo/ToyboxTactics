@@ -136,5 +136,13 @@
 			"y": 2
 		}
 	],
+	"post_battle_dialogue": [
+		[
+			"<#ff8080>Milo</>",
+			"Good work, team! It won't be",
+			"easy, but chaos is no match",
+			"for us!"
+		]
+	],
 	"next_level": "level2.json"
 }

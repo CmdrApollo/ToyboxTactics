@@ -132,6 +132,23 @@ def draw_tile(x, y, color, border=False):
             (i, j + TILE_SIZE[1] / 2),
         ], b_width)
 
+def draw_tile_flat(x, y, color, border=False):
+    i, j = from_world_pos(x, y)
+    if not border:
+        pygame.draw.polygon(screen, color, [
+            (i + TILE_SIZE[0] / 2, j),
+            (i + TILE_SIZE[0], j + TILE_SIZE[1] / 2),
+            (i + TILE_SIZE[0] / 2, j + TILE_SIZE[1]),
+            (i, j + TILE_SIZE[1] / 2),
+        ])
+    else:
+        pygame.draw.polygon(screen, color, [
+            (i + TILE_SIZE[0] / 2, j),
+            (i + TILE_SIZE[0], j + TILE_SIZE[1] / 2),
+            (i + TILE_SIZE[0] / 2, j + TILE_SIZE[1]),
+            (i, j + TILE_SIZE[1] / 2),
+        ], b_width)
+
 def draw_small_tile(x, y, color):
     i, j = from_world_pos(x, y)
     w, h = TILE_SIZE[0] * 0.8, TILE_SIZE[1] * 0.8
@@ -244,7 +261,7 @@ def GenerateSolidsMap(input_map, units_input, world_width=10, world_height=10):
 
     for x in range(world_width):
         for y in range(world_height):
-            if input_map[y * world_width + x]:
+            if input_map[y * world_width + x] not in [0, 4]:
                 solids[y, x] = False
             for unit in units_input:
                 if int(unit.x) == x and int(unit.y) == y:
@@ -292,12 +309,12 @@ def main():
                 case 'heavy':
                     units.append(HeavyUnit(True, u['x'], u['y']))
 
-        return world_size, level, nature, units, data['next_level']
+        return world_size, level, nature, units, data['post_battle_dialogue'], data['next_level']
 
     current_level = "level2.json"
 
     # schemas are forest, mountain, desert, and icy
-    world_size, level, nature, enemy_units, next_level = level_from_file(os.path.join("assets", "levels", current_level))
+    world_size, level, nature, enemy_units, dialogue, next_level = level_from_file(os.path.join("assets", "levels", current_level))
 
     friendly_units = []
     
@@ -459,11 +476,8 @@ def main():
 
     dialogue_manager = DialogueManager(FONT, BIG_FONT, 'white', 'white')
 
-    dialogue_manager.queue_text([
-        f"<{character_colors[0]}>{character_names[0]}</>",
-        "Good work, team. One more force",
-        "of chaos has been vanquished."
-    ])
+    for i in range(len(dialogue)):
+        dialogue_manager.queue_text(dialogue[i])
 
     run = True
     while run:
@@ -528,6 +542,7 @@ def main():
                                 selected_action = "none"
                                 selected_unit.action_points -= 1
                         elif selected_action == "items":
+                            # TODO it ain't working
                             w, h = 80, 30
                             x, y = from_world_pos(selected_unit.x + cam.x, selected_unit.y + cam.y)
                             x += selected_unit.character.scale * 2
@@ -594,6 +609,8 @@ def main():
                     elif event.button == 3:
                         selected_action = "none"
                 else:
+                    mx, my = pygame.mouse.get_pos()
+
                     match menu:
                         case -1:
                             w, h = 90, 30
@@ -610,7 +627,28 @@ def main():
                             if dialogue_manager.has_dialogue():
                                 dialogue_manager.on_confirm()
                             else:
-                                pass
+                                w, h = 100, 30
+                                if pygame.Rect(WIDTH - w - 10, HEIGHT - h - 10, w, h).collidepoint(mx, my):
+                                    menu = 1
+                        case 1:
+                            if dialogue_manager.has_dialogue():
+                                dialogue_manager.on_confirm()
+                            else:
+                                w, h = 100, 30
+                                if pygame.Rect(WIDTH - w - 10, HEIGHT - h - 10, w, h).collidepoint(mx, my):
+                                    menu = 2
+                                if pygame.Rect(10, HEIGHT - h - 10, w, h).collidepoint(mx, my):
+                                    menu = 0
+                        case 2:
+                            if dialogue_manager.has_dialogue():
+                                dialogue_manager.on_confirm()
+                            else:
+                                w, h = 100, 30
+                                if pygame.Rect(WIDTH - w - 10, HEIGHT - h - 10, w, h).collidepoint(mx, my):
+                                    # TO BATTLE !!!!
+                                    pass
+                                if pygame.Rect(10, HEIGHT - h - 10, w, h).collidepoint(mx, my):
+                                    menu = 1
 
         if battling and placed:
             if len(friendly_units) == 0:
@@ -802,11 +840,16 @@ def main():
 
             for x in range(world_size[0]):
                 for y in range(world_size[1]):
-                    if nature[y * world_size[0] + x] == 3: # water
+                    if nature[y * world_size[0] + x] in [3, 4]: # water or bridge
                         oy = - 0.25 + math.sin((x + y) + pygame.time.get_ticks() / 200) * 0.05
                         color = "deepskyblue" if (x + y) % 2 == 0 else darken("deepskyblue", 0.1)
                         draw_tile(x + cam.x - oy, y + cam.y - oy, color)
                         if OUTLINE: draw_tile(x + cam.x - oy, y + cam.y - oy, darken(color, 0.3), True)
+
+                        if nature[y * world_size[0] + x] == 4:
+                            bridge_color = "chocolate4" if (x + y) % 2 == 0 else darken("chocolate4", 0.1)
+                            draw_tile_flat(x + cam.x, y + cam.y, bridge_color)
+                            if OUTLINE: draw_tile_flat(x + cam.x, y + cam.y, darken(bridge_color, 0.3), True)
                         continue
 
                     color = colors[0] if (x + y) % 2 == 0 else colors[1]
@@ -830,6 +873,8 @@ def main():
                     if nature[y * world_size[0] + x] == 16:
                         draw_small_tile(x + cam.x, y + cam.y, 'yellow')
 
+            for x in range(world_size[0]):
+                for y in range(world_size[1]):
                     for u in friendly_units + enemy_units:
                         if int(u.x) == x and int(u.y) == y:
                             draw_unit(u, u in friendly_units, cam.x, cam.y, u == selected_unit, selected_action == "move")
@@ -999,10 +1044,29 @@ def main():
                             ly += t.get_height()
 
                         surf.blit(subsurf, (WIDTH // 4, HEIGHT // 2 - HEIGHT // 6))
-                case 0:
-                    draw_button(surf, 0, 0, 80, 30, "Test")
-
+                case 0: # shop
+                    surf.blit(t := BIG_FONT.render("Shop", True, 'black'), (WIDTH // 2 - t.get_width() // 2 + 2, 7))
+                    surf.blit(t := BIG_FONT.render("Shop", True, 'white'), (WIDTH // 2 - t.get_width() // 2, 5))
                     dialogue_manager.draw(surf)
+
+                    w, h = 100, 30
+                    draw_button(surf, WIDTH - w - 10, HEIGHT - h - 10, w, h, "To Tavern")
+                case 1: # tavern
+                    surf.blit(t := BIG_FONT.render("Tavern", True, 'black'), (WIDTH // 2 - t.get_width() // 2 + 2, 7))
+                    surf.blit(t := BIG_FONT.render("Tavern", True, 'white'), (WIDTH // 2 - t.get_width() // 2, 5))
+                    dialogue_manager.draw(surf)
+
+                    w, h = 100, 30
+                    draw_button(surf, WIDTH - w - 10, HEIGHT - h - 10, w, h, "To Toybox")
+                    draw_button(surf, 10, HEIGHT - h - 10, w, h, "To Shop")
+                case 2: # toybox
+                    surf.blit(t := BIG_FONT.render("Toybox", True, 'black'), (WIDTH // 2 - t.get_width() // 2 + 2, 7))
+                    surf.blit(t := BIG_FONT.render("Toybox", True, 'white'), (WIDTH // 2 - t.get_width() // 2, 5))
+                    dialogue_manager.draw(surf)
+
+                    w, h = 100, 30
+                    draw_button(surf, WIDTH - w - 10, HEIGHT - h - 10, w, h, "To Battle")
+                    draw_button(surf, 10, HEIGHT - h - 10, w, h, "To Tavern")
 
             v = HEIGHT * ((1 - curtain_timer / 2.0) ** 2)
             screen.blit(surf, (0, -HEIGHT + v))

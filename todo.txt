@@ -1,0 +1,12 @@
+DEMO
+- dialogue system (implementation into the game)
+- make stats do something
+- make stats go up when you level up
+- shop
+- tavern
+    - accepting sidequests
+- armory/toybox
+    - rearrangement of items
+- battle progression
+- item progression
+- first boss battle

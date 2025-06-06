@@ -118,6 +118,23 @@ def draw_tile(x, y, color, border=False):
             (i, j + TILE_SIZE[1] / 2),
         ], 1)
 
+def draw_tile_flat(x, y, color, border=False):
+    i, j = from_world_pos(x, y)
+    if not border:
+        pygame.draw.polygon(screen, color, [
+            (i + TILE_SIZE[0] / 2, j),
+            (i + TILE_SIZE[0], j + TILE_SIZE[1] / 2),
+            (i + TILE_SIZE[0] / 2, j + TILE_SIZE[1]),
+            (i, j + TILE_SIZE[1] / 2),
+        ])
+    else:
+        pygame.draw.polygon(screen, color, [
+            (i + TILE_SIZE[0] / 2, j),
+            (i + TILE_SIZE[0], j + TILE_SIZE[1] / 2),
+            (i + TILE_SIZE[0] / 2, j + TILE_SIZE[1]),
+            (i, j + TILE_SIZE[1] / 2),
+        ], 1)
+
 def draw_small_tile(x, y, color):
     i, j = from_world_pos(x, y)
     w, h = TILE_SIZE[0] * 0.8, TILE_SIZE[1] * 0.8
@@ -236,11 +253,11 @@ def main():
                 case 'heavy':
                     units.append(HeavyUnit(True, u['x'], u['y']))
 
-        return world_size, level, nature, units, data['next_level']
+        return world_size, level, nature, units, data['post_battle_dialogue'], data['next_level']
 
     cam = pygame.Vector2(6, -4)
 
-    world_size, level, nature, units, next_level = level_from_file(askopenfilename())
+    world_size, level, nature, units, dialogue, next_level = level_from_file(askopenfilename())
 
     run = True
     while run:
@@ -284,6 +301,8 @@ def main():
                                 for unit in units
                             ],
 
+                            "post_battle_dialogue": dialogue,
+
                             "next_level": next_level
                         }
 
@@ -310,7 +329,7 @@ def main():
 
         for x in range(world_size[0]):
             for y in range(world_size[1]):
-                if nature[y * world_size[0] + x] == 3: # water
+                if nature[y * world_size[0] + x] in [3, 4]: # water
                     oy = - 0.25 + math.sin((x + y) + pygame.time.get_ticks() / 200) * 0.05
                     color = "deepskyblue" if (x + y) % 2 == 0 else darken("deepskyblue", 0.1)
                     draw_tile(x + cam.x - oy, y + cam.y - oy, color)
@@ -327,6 +346,10 @@ def main():
                     draw_tree(x + cam.x, y + cam.y)
                 if nature[y * world_size[0] + x] == 2:
                     draw_rock(x + cam.x, y + cam.y)
+                if nature[y * world_size[0] + x] == 4:
+                        bridge_color = "chocolate4" if (x + y) % 2 == 0 else darken("chocolate4", 0.1)
+                        draw_tile_flat(x + cam.x, y + cam.y, bridge_color)
+                        draw_tile_flat(x + cam.x, y + cam.y, darken(bridge_color, 0.3), True)
                 if nature[y * world_size[0] + x] == 16:
                     draw_small_tile(x + cam.x, y + cam.y, 'yellow')
 
