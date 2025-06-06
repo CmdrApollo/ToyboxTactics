@@ -80,7 +80,7 @@ class Unit:
         self.xp = 0
         self.xp_to_level_up = 10
 
-        self.weapon = Thumbtack()
+        self.weapon = SewingNeedle()
         self.armor = PaperArmor()
 
         self.draw_x = x

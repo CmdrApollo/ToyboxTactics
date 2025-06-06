@@ -11,6 +11,7 @@ import numpy as np
 from character import character_from_file
 from unit import ScoutUnit, SoldierUnit, HeavyUnit
 from dialogue import DialogueManager
+from item import Potion
 
 from tcod import path
 
@@ -26,9 +27,6 @@ SOUNDS = {}
 
 for f in glob.glob(os.path.join('assets', 'audio', '**.wav')):
     SOUNDS.update({f.split('\\')[-1].split('.')[0]: pygame.mixer.Sound(f)})
-
-for i in SOUNDS:
-    SOUNDS[i].set_volume(0.0)
 
 pygame.display.set_caption("Toybox Tactics")
 
@@ -296,7 +294,7 @@ def main():
 
         return world_size, level, nature, units, data['next_level']
 
-    current_level = "level1.json"
+    current_level = "level2.json"
 
     # schemas are forest, mountain, desert, and icy
     world_size, level, nature, enemy_units, next_level = level_from_file(os.path.join("assets", "levels", current_level))
@@ -310,6 +308,8 @@ def main():
     turn = 0
 
     selected_unit = None
+
+    items = [Potion() for _ in range(3)]
 
     c = GenerateSolidsMap(nature, units, world_size[0], world_size[1])
 
@@ -432,10 +432,12 @@ def main():
     ap_w = 0
 
     selected_action = "none"
+
+    getting_target = False
     
     animation_time = 0.0
 
-    banner_text = "Placement"
+    banner_text = "Placement Phase"
     banner_time = 3.0
 
     placing_unit = 0
@@ -525,13 +527,30 @@ def main():
                                         
                                 selected_action = "none"
                                 selected_unit.action_points -= 1
+                        elif selected_action == "items":
+                            w, h = 80, 30
+                            x, y = from_world_pos(selected_unit.x + cam.x, selected_unit.y + cam.y)
+                            x += selected_unit.character.scale * 2
+                            y -= selected_unit.character.scale
+                            for i in range(len(items)):
+                                if pygame.Rect(x, y, w, h).collidepoint(mx, my):
+                                    print("bye")
+                                    if not items[i].requires_target:
+                                        o = items[i].on_use(selected_unit, None)
+                                        items.remove(items[i])
+                                        if o:
+                                            add_text_popup(o[0], selected_unit.x + cam.x, selected_unit.y + cam.y, o[1])
+                                        selected_action = "none"
+                                    else:
+                                        getting_target = True
+                                y += h
                         elif selected_action == "none" and placed:
                             s = 50
                             w, h = 80, 30
                             x, y = from_world_pos(selected_unit.x + cam.x, selected_unit.y + cam.y)
                             x += selected_unit.character.scale * 2
                             y -= selected_unit.character.scale
-                            for i in range(3):
+                            for i in range(4):
                                 if pygame.Rect(x, y, w, h).collidepoint(pygame.mouse.get_pos()):
                                     selected_action = ["move", "attack", "items", "defend"][i]
                                     
@@ -864,6 +883,16 @@ def main():
                                 screen.blit(t := SMALL_FONT.render(line, True, 'black'), (mx + 150 - t.get_width() / 2, my + 45 + i * SMALL_FONT.size(line)[1]))
 
                             break
+            elif selected_action == "items" and not turn & 1:
+                screen.blit(t := FONT.render("Select an Item", True, 'black'), (WIDTH // 2 - t.get_width() // 2, 10))
+                s = 50
+                w, h = 80, 30
+                x, y = from_world_pos(selected_unit.x + cam.x, selected_unit.y + cam.y)
+                x += selected_unit.character.scale * 2
+                y -= selected_unit.character.scale
+                for i in range(len(items)):
+                    can_show_info = draw_button(screen, x, y, w, h, items[i].name)
+                    y += h
 
             # draw ap bar
 
@@ -873,6 +902,8 @@ def main():
                 pygame.draw.rect(screen, 'orange', (WIDTH // 2 - ap_w // 2, HEIGHT - 50, ap_w, 20), 0, 8)
 
                 screen.blit(t := SMALL_FONT.render(f"AP: {selected_unit.action_points} / {selected_unit.max_action_points}", True, 'black'), (50, HEIGHT - 25))
+
+            screen.blit(t := SMALL_FONT.render(f"Turn {1 + turn // 2}", True, 'black'), (WIDTH - t.get_width() - 5, 5))
 
             x, y = 0, 20
             w = 185

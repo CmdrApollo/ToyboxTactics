@@ -261,9 +261,9 @@ def main():
                         for u in units[::-1]:
                             if u.x == selected_pos[0] and u.y == selected_pos[1]:
                                 units.remove(u)
-                if event.key == pygame.K_a: units.append(ScoutUnit(selected_pos[0], selected_pos[1]))
-                if event.key == pygame.K_b: units.append(SoldierUnit(selected_pos[0], selected_pos[1]))
-                if event.key == pygame.K_c: units.append(HeavyUnit(selected_pos[0], selected_pos[1]))
+                if event.key == pygame.K_a: units.append(ScoutUnit(True, selected_pos[0], selected_pos[1]))
+                if event.key == pygame.K_b: units.append(SoldierUnit(True, selected_pos[0], selected_pos[1]))
+                if event.key == pygame.K_c: units.append(HeavyUnit(True, selected_pos[0], selected_pos[1]))
                 if event.key == pygame.K_SPACE: nature[selected_pos[1] * world_size[0] + selected_pos[0]] = 0 if nature[selected_pos[1] * world_size[0] + selected_pos[0]] == 16 else 16
                 if event.key == pygame.K_s and keys[pygame.K_LCTRL]:
                     with open(asksaveasfilename(), 'w') as f:
