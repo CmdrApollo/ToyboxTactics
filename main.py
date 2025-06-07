@@ -9,9 +9,9 @@ import math
 import numpy as np
 
 from character import character_from_file
-from unit import ScoutUnit, SoldierUnit, HeavyUnit
+from unit import *
 from dialogue import DialogueManager
-from item import Potion
+from item import *
 
 from tcod import path
 
@@ -326,7 +326,9 @@ def main():
 
     selected_unit = None
 
-    items = [Potion() for _ in range(3)]
+    party_inventory = {
+        Potion(): 3
+    }
 
     c = GenerateSolidsMap(nature, units, world_size[0], world_size[1])
 
@@ -479,6 +481,12 @@ def main():
     for i in range(len(dialogue)):
         dialogue_manager.queue_text(dialogue[i])
 
+    shop_inventory = {
+        Potion(): 3,
+        PaperArmorItem(): 1,
+        ThumbtackItem(): 1
+    }
+
     run = True
     while run:
         delta = clock.tick_busy_loop(pygame.display.get_current_refresh_rate()) / 1000.0
@@ -547,12 +555,12 @@ def main():
                             x, y = from_world_pos(selected_unit.x + cam.x, selected_unit.y + cam.y)
                             x += selected_unit.character.scale * 2
                             y -= selected_unit.character.scale
-                            for i in range(len(items)):
+                            for i in range(len(party_inventory)):
                                 if pygame.Rect(x, y, w, h).collidepoint(mx, my):
                                     print("bye")
-                                    if not items[i].requires_target:
-                                        o = items[i].on_use(selected_unit, None)
-                                        items.remove(items[i])
+                                    if not list(party_inventory.keys())[i].requires_target:
+                                        o = list(party_inventory.keys())[i].on_use(selected_unit, None)
+                                        party_inventory.update({ list(party_inventory.keys())[i]: list(party_inventory.values())[i] - 1 })
                                         if o:
                                             add_text_popup(o[0], selected_unit.x + cam.x, selected_unit.y + cam.y, o[1])
                                         selected_action = "none"
@@ -931,12 +939,12 @@ def main():
             elif selected_action == "items" and not turn & 1:
                 screen.blit(t := FONT.render("Select an Item", True, 'black'), (WIDTH // 2 - t.get_width() // 2, 10))
                 s = 50
-                w, h = 80, 30
+                w, h = 100, 30
                 x, y = from_world_pos(selected_unit.x + cam.x, selected_unit.y + cam.y)
                 x += selected_unit.character.scale * 2
                 y -= selected_unit.character.scale
-                for i in range(len(items)):
-                    can_show_info = draw_button(screen, x, y, w, h, items[i].name)
+                for i in range(len(party_inventory)):
+                    can_show_info = draw_button(screen, x, y, w, h, f"{list(party_inventory.values())[i]}x {list(party_inventory.keys())[i].name}")
                     y += h
 
             # draw ap bar
@@ -1047,6 +1055,64 @@ def main():
                 case 0: # shop
                     surf.blit(t := BIG_FONT.render("Shop", True, 'black'), (WIDTH // 2 - t.get_width() // 2 + 2, 7))
                     surf.blit(t := BIG_FONT.render("Shop", True, 'white'), (WIDTH // 2 - t.get_width() // 2, 5))
+                    
+                    w, h = 200, 30
+                    x, y = WIDTH // 3 - w // 2, HEIGHT // 3
+
+                    surf.blit(t := FONT.render("Shop Items", True, 'black'), (x + 1, y + 1))
+                    surf.blit(t := FONT.render("Shop Items", True, 'white'), (x, y))
+
+                    y += t.get_height() + 5
+
+                    for i, (k, v) in enumerate(shop_inventory.items()):
+                        t = f"{v}x {k.name} - {k.price}b"
+                        option_surf = pygame.Surface((w, h), pygame.SRCALPHA)
+
+                        color = (0, 0, 0, 192) if pygame.Rect(x, y, w, h).collidepoint(pygame.mouse.get_pos()) else (0, 0, 0, 128)
+
+                        if len(shop_inventory) == 1:
+                            pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, 8)
+                        else:
+                            if i == 0:
+                                pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, -1, 8, 8, -1, -1)
+                            elif i == len(shop_inventory) - 1:
+                                pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, -1, -1, -1, 8, 8)
+                            else:
+                                pygame.draw.rect(option_surf, color, (0, 0, w, h))
+
+                        surf.blit(option_surf, (x, y))
+                        surf.blit(text := SMALL_FONT.render(t, True, 'white'), (x + 5, y + h // 2 - text.get_height() // 2))
+
+                        y += h
+
+                    x, y = WIDTH * (2 / 3) - w // 2, HEIGHT // 3
+
+                    surf.blit(t := FONT.render("Your Items", True, 'black'), (x + 1, y + 1))
+                    surf.blit(t := FONT.render("Your Items", True, 'white'), (x, y))
+
+                    y += t.get_height() + 5
+
+                    for i, (k, v) in enumerate(party_inventory.items()):
+                        t = f"{v}x {k.name} - {k.price}b"
+                        option_surf = pygame.Surface((w, h), pygame.SRCALPHA)
+
+                        color = (0, 0, 0, 192) if pygame.Rect(x, y, w, h).collidepoint(pygame.mouse.get_pos()) else (0, 0, 0, 128)
+
+                        if len(party_inventory) == 1:
+                            pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, 8)
+                        else:
+                            if i == 0:
+                                pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, -1, 8, 8, -1, -1)
+                            elif i == len(party_inventory) - 1:
+                                pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, -1, -1, -1, 8, 8)
+                            else:
+                                pygame.draw.rect(option_surf, color, (0, 0, w, h))
+
+                        surf.blit(option_surf, (x, y))
+                        surf.blit(text := SMALL_FONT.render(t, True, 'white'), (x + 5, y + h // 2 - text.get_height() // 2))
+
+                        y += h
+
                     dialogue_manager.draw(surf)
 
                     w, h = 100, 30
