@@ -78,7 +78,7 @@ class Unit:
         self.defense = defense
 
         self.xp = 0
-        self.xp_to_level_up = 10
+        self.xp_to_level_up = 5
 
         self.weapon = SewingNeedle()
         self.armor = PaperArmor()

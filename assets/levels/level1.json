@@ -136,12 +136,49 @@
 			"y": 2
 		}
 	],
+	"during_battle_dialogue": [
+        [
+            [
+                "<#808080>Tutorial</>",
+                "Welcome to the demo for Toybox Tactics!",
+                "To begin with, click on the yellow tiles",
+                "to place your units!"
+            ],
+            [
+                "<#808080>Tutorial</>",
+                "Afterwards, hit \"move\" next to each",
+                "unit, and hit \"attack\" once you are",
+                "close enough to an enemy!"
+            ],
+            [
+                "<#808080>Tutorial</>",
+                "Once you hit \"attack\", click on an enemy",
+                "within one of the red tiles to attack them!"
+            ]
+        ],
+        [
+            [
+                "<#808080>Tutorial</>",
+                "Now it's the enemies' turn! They will",
+                "move towards your units and attack them!"
+            ]
+        ],
+        [
+            [
+                "<#808080>Tutorial</>",
+                "Back to you! Keep hitting the enemies until",
+                "they are all taken out of combat!"
+            ]
+        ]
+    ],
 	"post_battle_dialogue": [
 		[
-			"<#ff8080>Milo</>",
-			"Good work, team! It won't be",
-			"easy, but chaos is no match",
-			"for us!"
+			"<#808080>Tutorial</>",
+			"Great work! Now that you have completed",
+			"a battle, you have some downtime with",
+			"which you can go shopping, choose your",
+			"next battle, and equip your units before",
+			"sending them back out!"
 		]
 	],
 	"next_level": "level2.json"

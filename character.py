@@ -2,13 +2,15 @@ import pygame
 import math
 import random
 import json
+import os
+import pygame.gfxdraw
 
 class Part:
     def __init__(self, name, color):
         self.name = name
         self.color = color
 
-    def draw(self, win, x, y, scale, body_offset, limb_offset):
+    def draw(self, win, x, y, scale, body_offset, limb_offset, draw_tex, _tex):
         pass
 
 class Circle(Part):
@@ -18,7 +20,7 @@ class Circle(Part):
         self.y = y
         self.radius = radius
     
-    def draw(self, win, x, y, scale, body_offset, limb_offset):
+    def draw(self, win, x, y, scale, body_offset, limb_offset, draw_tex, _tex):
         o = 0
         
         if self.name in ["body", "head"]:
@@ -35,15 +37,25 @@ class Poly(Part):
         super().__init__(name, color)
         self.points = points
         
-    def draw(self, win, x, y, scale, body_offset, limb_offset):
+    def draw(self, win, x, y, scale, body_offset, limb_offset, draw_tex, _tex: pygame.Surface):
         o = 0
 
         if self.name in ["body", "head"] or "arm" in self.name:
             o = body_offset * scale
         if self.name == "head":
             o /= 2
+        
+        if draw_tex:
+            t = _tex.copy()
 
-        pygame.draw.polygon(win, self.color, [(x + p[0] * scale, y + p[1] * scale + o) for p in self.points])
+            s = pygame.Surface(t.get_size())
+            s.fill(self.color)
+
+            t.blit(s, (0, 0), special_flags=pygame.BLEND_RGB_MULT)
+            
+            pygame.gfxdraw.textured_polygon(win, [(x + p[0] * scale, y + p[1] * scale + o) for p in self.points], t, 0, 0)
+        else:
+            pygame.draw.polygon(win, self.color, [(x + p[0] * scale, y + p[1] * scale + o) for p in self.points])
 
         return min(p[0] for p in self.points), min(p[1] for p in self.points)
 
@@ -53,7 +65,7 @@ class Line(Part):
         self.points = points
         self.thickness = thickness
         
-    def draw(self, win, x, y, scale, body_offset, step_cycle):
+    def draw(self, win, x, y, scale, body_offset, step_cycle, draw_tex, _tex):
         o = 0
         
         if self.name in ["body", "head"] or "arm" in self.name:
@@ -103,7 +115,7 @@ class Character:
         self.body_off_mult, self.limb_off_mult = random.randint(30, 35) / 10, 4
         self.surf = None
     
-    def draw(self, win, cam, limb_move, invert_limbs, color='white', selected=False):
+    def draw(self, win, cam, limb_move, invert_limbs, draw_tex, tex, color='white', selected=False):
         time = pygame.time.get_ticks() / 1000
 
         body_offset_y = math.sin(time * self.body_off_mult) * 0.05
@@ -120,7 +132,7 @@ class Character:
         self.minx, self.miny = 100, 100
 
         for part in self.parts:
-            mx, my = part.draw(self.surf, self.scale * 2, self.scale * 2, self.scale, body_offset_y, limb_offset)
+            mx, my = part.draw(self.surf, self.scale * 2, self.scale * 2, self.scale, body_offset_y, limb_offset, draw_tex, tex)
             
             if mx < self.minx: self.minx = mx
             if my < self.miny: self.miny = my

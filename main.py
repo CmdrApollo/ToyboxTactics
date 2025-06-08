@@ -15,11 +15,19 @@ from item import *
 
 from tcod import path
 
+all_levels = [
+    ("Tutorial", "level1.json"),
+    ("Face-off Against Bori", "level2.json"),
+]
+
+sell_falloff = 0.25
+
 character_names = ["Milo", "Toto", "Grub"]
 character_colors = ["#ff8080", "#80ff80", "#8080ff"]
 character_classes = [ScoutUnit, SoldierUnit, HeavyUnit]
 
 OUTLINE = True
+PAPERTEX = False
 
 pygame.init()
 
@@ -40,7 +48,6 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 TILE_SIZE = (80, 40)
 
 FINDER = pygame.image.load("_finder.png")
-
 FINDER = pygame.transform.scale(FINDER, (TILE_SIZE[0], TILE_SIZE[1]))
 
 BG = pygame.Surface((WIDTH, HEIGHT))
@@ -49,6 +56,10 @@ for y in range(0, HEIGHT):
     pygame.draw.line(BG, pygame.Color("darkslategray2").lerp("darkslategray4", y / HEIGHT), (0, y), (WIDTH, y), 1)
 
 b_width = 1
+
+PG_CE_POWERED = pygame.image.load(os.path.join('assets', 'visual', 'pygame_ce_powered_lowres.webp')).convert_alpha()
+
+_tex = pygame.image.load(os.path.join('assets', 'visual', 'paper.png')).convert()
 
 def clamp(value, min_value, max_value):
     return max(min_value, min(value, max_value))
@@ -224,7 +235,7 @@ def draw_unit(unit, friendly, x, y, is_selected=False, show_path=False):
     character.x = i + TILE_SIZE[0] / 2
     character.y = j - TILE_SIZE[1] / 4
 
-    character.draw(screen, pygame.Vector2(0, 0), False, False, 'skyblue' if friendly else 'brown1', is_selected)
+    character.draw(screen, pygame.Vector2(0, 0), False, False, PAPERTEX, _tex, 'skyblue' if friendly else 'brown1', is_selected)
 
     if unit.defending:
         draw_shield(unit.draw_x + x, unit.draw_y + y)
@@ -255,6 +266,17 @@ def draw_shield(x, y):
         (i + TILE_SIZE[0] * 0.3, j + TILE_SIZE[1] / 2),
     ], 2)
 
+def draw_star(win, x, y, scale=10, rotation=0, col='lightyellow'):
+    points = [
+        [
+            math.cos(math.radians(rotation + -90 + i * 36)) * (scale if i % 2 == 0 else scale / 2),
+            math.sin(math.radians(rotation + -90 + i * 36)) * (scale if i % 2 == 0 else scale / 2)
+        ]
+        for i in range(10)
+    ]
+
+    pygame.draw.polygon(win, col, [[p[0] + x, p[1] + y] for p in points])
+
 def GenerateSolidsMap(input_map, units_input, world_width=10, world_height=10):
     solids = np.array([[ 0 for _ in range(world_width) ] for _ in range(world_height)])
     solids[:] = True
@@ -275,6 +297,8 @@ def play_tap_sound():
 def main():
     clock = pygame.time.Clock()
     delta = 0.0
+
+    splash_screen = 4.0
 
     cam = pygame.Vector2(6, -4)
 
@@ -309,12 +333,14 @@ def main():
                 case 'heavy':
                     units.append(HeavyUnit(True, u['x'], u['y']))
 
-        return world_size, level, nature, units, data['post_battle_dialogue'], data['next_level']
+        return world_size, level, nature, units, data['during_battle_dialogue'], data['post_battle_dialogue'], data['next_level']
 
-    current_level = "level2.json"
+    current_level = 0
 
-    # schemas are forest, mountain, desert, and icy
-    world_size, level, nature, enemy_units, dialogue, next_level = level_from_file(os.path.join("assets", "levels", current_level))
+    level_name, level_filename = all_levels[current_level]
+
+    # schemas are forest, mountain, desert, icy, and chaos
+    world_size, schema, nature, enemy_units, thru_dialogue, end_dialogue, next_level = level_from_file(os.path.join("assets", "levels", level_filename))
 
     friendly_units = []
     
@@ -327,7 +353,7 @@ def main():
     selected_unit = None
 
     party_inventory = {
-        Potion(): 3
+        Potion: 3
     }
 
     c = GenerateSolidsMap(nature, units, world_size[0], world_size[1])
@@ -402,6 +428,8 @@ def main():
 
     popups = []
 
+    buttons = 100
+
     def add_text_popup(text, x, y, color="black"):
         t = SMALL_FONT.render(str(text), True, color)
         
@@ -416,6 +444,9 @@ def main():
             "y": sy,
             "time": 1.0
         })
+
+    def add_button_pickup(x, y, color="plum"):
+        buttons += 1
 
     def draw_button(scr, x, y, w, h, text):
         can_show_info = True
@@ -472,19 +503,17 @@ def main():
     curtain_timer = 0
     battle_ss = pygame.Surface((WIDTH, HEIGHT))
 
-    SOUNDS['maintheme'].play()
-
     menu = -1 # post battle seq
 
     dialogue_manager = DialogueManager(FONT, BIG_FONT, 'white', 'white')
 
-    for i in range(len(dialogue)):
-        dialogue_manager.queue_text(dialogue[i])
+    for i in range(len(thru_dialogue[turn])):
+        dialogue_manager.queue_text(thru_dialogue[turn][i])
 
     shop_inventory = {
-        Potion(): 3,
-        PaperArmorItem(): 1,
-        ThumbtackItem(): 1
+        Potion: 3,
+        PaperArmorItem: 1,
+        ThumbtackItem: 1
     }
 
     run = True
@@ -495,10 +524,49 @@ def main():
 
         selected_pos = mouse_to_tile_pos(cam.x, cam.y)
             
+        evs = []
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
-            elif event.type == pygame.KEYDOWN:
+            else:
+                evs.append(event)
+        
+        sp = bool(splash_screen)
+
+        splash_screen = max(0, splash_screen - delta)
+
+        if splash_screen:
+            splash_screen_surf = pygame.Surface((WIDTH, HEIGHT))
+            splash_screen_surf.fill('lightcyan')
+            for x in range(WIDTH // 50):
+                for y in range(HEIGHT // 50):
+                    if (x + y) % 2 == 0:
+                        pygame.draw.rect(splash_screen_surf, darken('lightcyan', 0.1), (x * 50, y * 50, 50, 50))
+
+            splash_screen_surf.blit(PG_CE_POWERED, (WIDTH - PG_CE_POWERED.get_width() - 5, HEIGHT - PG_CE_POWERED.get_height() - 5))
+
+            splash_screen_surf.blit(t := BIG_FONT.render("Toybox Tactics", True, 'black'), (2 + WIDTH // 2 - t.get_width() // 2, 2 + HEIGHT // 4 - t.get_height() // 2))
+            splash_screen_surf.blit(t := BIG_FONT.render("Toybox Tactics", True, 'white'), (WIDTH // 2 - t.get_width() // 2, HEIGHT // 4 - t.get_height() // 2))
+
+            splash_screen_surf.blit(t := FONT.render("A Paper Opcode Game", True, 'black'), (1 + WIDTH // 2 - t.get_width() // 2, 1 + HEIGHT // 3 - t.get_height() // 2))
+            splash_screen_surf.blit(t := FONT.render("A Paper Opcode Game", True, 'white'), (WIDTH // 2 - t.get_width() // 2, HEIGHT // 3 - t.get_height() // 2))
+
+            screen.blit(splash_screen_surf, (0, 0))
+            black_screen = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            black_screen.fill('black')
+            z = splash_screen / 4.0
+            black_screen.set_alpha(int(255 * abs(2 * (z - 0.5)) ** 2))
+            screen.blit(black_screen, (0, 0))
+
+            pygame.display.flip()
+            continue
+
+        if sp:
+            SOUNDS['maintheme'].play()
+
+        for event in evs:
+            if event.type == pygame.KEYDOWN:
                 if battling:
                     if event.key == pygame.K_SPACE:
                         battling = False
@@ -511,6 +579,10 @@ def main():
 
             elif event.type == pygame.MOUSEBUTTONDOWN:
                 if battling:
+                    if dialogue_manager.has_dialogue():
+                        dialogue_manager.on_confirm()
+                        continue
+
                     if event.button == 1 and not turn & 1:
                         if selected_action == "move":
                             if selected_pos in allowed_moves:
@@ -539,6 +611,9 @@ def main():
                                                             add_text_popup(f"+{unit.xp_given} xp!", selected_unit.x + cam.x, selected_unit.y + cam.y, "gold")
                                                             messages.append(f"{selected_unit.name} gained {unit.xp_given} xp!")
                                                         enemy_units.remove(unit)
+
+                                                        buttons += random.randint(4, 8)
+
                                                     units.remove(unit)
                                                     SOUNDS["smash"].play()
                                                 else:
@@ -638,6 +713,30 @@ def main():
                                 w, h = 100, 30
                                 if pygame.Rect(WIDTH - w - 10, HEIGHT - h - 10, w, h).collidepoint(mx, my):
                                     menu = 1
+                                
+                                w, h = 200, 30
+                                x, y = WIDTH // 3 - w // 2, HEIGHT // 3
+                                y += FONT.size("Shop Items")[1] + 5
+
+                                for i, (k, v) in enumerate(shop_inventory.items()):
+                                    if pygame.Rect(x, y, w, h).collidepoint(mx, my):
+                                        if k().price <= buttons:
+                                            buttons -= k().price
+                                            if party_inventory.get(k):
+                                                party_inventory[k] += 1
+                                            else:
+                                                party_inventory.update({ k: 1 })
+                                            shop_inventory[k] = max(0, shop_inventory[k] - 1)
+                                
+                                    y += h
+                                
+                                for i in range(len(shop_inventory)):
+                                    try:
+                                        k = list(shop_inventory.keys())[i]
+                                        if shop_inventory[k] == 0:
+                                            shop_inventory.pop(k)
+                                    except IndexError:
+                                        pass
                         case 1:
                             if dialogue_manager.has_dialogue():
                                 dialogue_manager.on_confirm()
@@ -673,6 +772,9 @@ def main():
                 SOUNDS['maintheme'].stop()
 
                 SOUNDS['battle_win'].play()
+
+                for i in range(len(end_dialogue)):
+                    dialogue_manager.queue_text(end_dialogue[i])
 
         if battling:
             if placed:
@@ -789,6 +891,10 @@ def main():
 
                         turn += 1
 
+                        if turn < len(thru_dialogue):
+                            for i in range(len(thru_dialogue[turn])):
+                                dialogue_manager.queue_text(thru_dialogue[turn][i])
+
                         if turn & 1:
                             # enemy turn
                             current_unit = 0
@@ -830,7 +936,7 @@ def main():
 
             screen.blit(BG, (0, 0))
 
-            match level:
+            match schema:
                 case "forest":
                     colors = ["darkolivegreen2"]
                 case "mountain":
@@ -880,9 +986,7 @@ def main():
                         draw_rock(x + cam.x, y + cam.y)
                     if nature[y * world_size[0] + x] == 16:
                         draw_small_tile(x + cam.x, y + cam.y, 'yellow')
-
-            for x in range(world_size[0]):
-                for y in range(world_size[1]):
+                        
                     for u in friendly_units + enemy_units:
                         if int(u.x) == x and int(u.y) == y:
                             draw_unit(u, u in friendly_units, cam.x, cam.y, u == selected_unit, selected_action == "move")
@@ -975,7 +1079,7 @@ def main():
                 ])
 
                 surf.blit(FONT.render(unit.name, True, 'white'), (5, 3))
-                surf.blit(SMALL_FONT.render(f"{unit.health} / {unit.max_health} HP", True, 'white'), (5, 30))
+                surf.blit(SMALL_FONT.render(f"{unit.health} / {unit.max_health} HP - LVL {unit.level}", True, 'white'), (5, 30))
 
                 screen.blit(surf, (x, y))
 
@@ -1012,6 +1116,8 @@ def main():
                 s.set_alpha(int(255 * bt))
 
                 screen.blit(s, (0, 100 * (1 - bt)))
+
+            dialogue_manager.draw(screen)
         else:
             curtain_timer = max(0, curtain_timer - delta)
 
@@ -1065,7 +1171,7 @@ def main():
                     y += t.get_height() + 5
 
                     for i, (k, v) in enumerate(shop_inventory.items()):
-                        t = f"{v}x {k.name} - {k.price}b"
+                        t = f"{v}x {k().name} - {k().price}b"
                         option_surf = pygame.Surface((w, h), pygame.SRCALPHA)
 
                         color = (0, 0, 0, 192) if pygame.Rect(x, y, w, h).collidepoint(pygame.mouse.get_pos()) else (0, 0, 0, 128)
@@ -1093,7 +1199,7 @@ def main():
                     y += t.get_height() + 5
 
                     for i, (k, v) in enumerate(party_inventory.items()):
-                        t = f"{v}x {k.name} - {k.price}b"
+                        t = f"{v}x {k().name} - {int(k().price * (1 - sell_falloff))}b"
                         option_surf = pygame.Surface((w, h), pygame.SRCALPHA)
 
                         color = (0, 0, 0, 192) if pygame.Rect(x, y, w, h).collidepoint(pygame.mouse.get_pos()) else (0, 0, 0, 128)
@@ -1112,6 +1218,9 @@ def main():
                         surf.blit(text := SMALL_FONT.render(t, True, 'white'), (x + 5, y + h // 2 - text.get_height() // 2))
 
                         y += h
+
+                    surf.blit(t := FONT.render(f"{buttons}b", True, 'black'), (1 + WIDTH // 2 - t.get_width() // 2, 1 + HEIGHT // 3))
+                    surf.blit(t := FONT.render(f"{buttons}b", True, 'white'), (WIDTH // 2 - t.get_width() // 2, HEIGHT // 3))
 
                     dialogue_manager.draw(surf)
 

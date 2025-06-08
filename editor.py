@@ -210,7 +210,7 @@ def draw_unit(unit, friendly, x, y, is_selected=False, show_path=False):
     character.x = i + TILE_SIZE[0] / 2
     character.y = j - TILE_SIZE[1] / 4
 
-    character.draw(screen, pygame.Vector2(0, 0), False, False, 'skyblue' if friendly else 'brown1', is_selected)
+    character.draw(screen, pygame.Vector2(0, 0), False, False, False, None, 'skyblue' if friendly else 'brown1', is_selected)
 
 def main():
     clock = pygame.time.Clock()
@@ -253,11 +253,11 @@ def main():
                 case 'heavy':
                     units.append(HeavyUnit(True, u['x'], u['y']))
 
-        return world_size, level, nature, units, data['post_battle_dialogue'], data['next_level']
+        return world_size, level, nature, units, data['during_battle_dialogue'], data['post_battle_dialogue'], data['next_level']
 
     cam = pygame.Vector2(6, -4)
 
-    world_size, level, nature, units, dialogue, next_level = level_from_file(askopenfilename())
+    world_size, level, nature, units, during_dialogue, dialogue, next_level = level_from_file(askopenfilename())
 
     run = True
     while run:
@@ -301,6 +301,7 @@ def main():
                                 for unit in units
                             ],
 
+                            "during_battle_dialogue": during_dialogue,
                             "post_battle_dialogue": dialogue,
 
                             "next_level": next_level
