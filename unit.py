@@ -1,5 +1,8 @@
+import pygame
 import os
+import random
 from character import character_from_file
+from particle import Particle
 
 def sign(value):
     if value < 0:
@@ -27,17 +30,49 @@ class Weapon:
     def __repr__(self):
         return f"Weapon({self.name}, {self.damage}, {self.range})"
 
+    def draw(self, win, delta, x, y, scale):
+        pass
+
 class Thumbtack(Weapon):
     def __init__(self):
         super().__init__("Thumbtack", 5, 1, False)
+
+    def draw(self, win, delta, x, y, scale):
+        pygame.draw.polygon(win, 'silver', [(x + 2 * scale, y - scale), (x + 2 * scale - 5, y), (x + 2 * scale + 5, y)])
+
+        pygame.draw.polygon(win, 'violetred', [
+            (x + 2 * scale - 10, y), (x + 2 * scale + 10, y),
+            (x + 2 * scale + 5, y + scale * 0.5), (x + 2 * scale + 10, y + scale),
+            (x + 2 * scale - 10, y + scale), (x + 2 * scale - 5, y + scale * 0.5)
+        ])
 
 class Toothpick(Weapon):
     def __init__(self):
         super().__init__("Toothpick", 4, 2, False)
 
+    def draw(self, win, delta, x, y, scale):
+        pygame.draw.line(win, 'chocolate', (x + 2 * scale, y - scale), (x + 2 * scale, y + scale), scale // 6)
+
 class SewingNeedle(Weapon):
     def __init__(self):
-        super().__init__("Sewing Needle", 5, 2, False)
+        super().__init__("Sewing Needle", 5, 2, True)
+
+    def draw(self, win, delta, x, y, scale):
+        pygame.draw.line(win, 'silver', (x + 2 * scale, y - scale), (x + 2 * scale, y + scale), scale // 6)
+
+class Match(Weapon):
+    def __init__(self):
+        super().__init__("Match", 4, 2, True)
+        self.particles = [Particle(-50, -50, 0.5 * random.random() + 1.0) for _ in range(10)]
+
+    def draw(self, win, delta, x, y, scale):
+        pygame.draw.line(win, 'chocolate4', (x + 2 * scale, y - scale), (x + 2 * scale, y + scale), scale // 6)
+
+        for p in self.particles:
+            p.ox = x + random.randint(-5, 5) + 2 * scale
+            p.oy = y - scale
+            p.update(delta)
+            p.draw(win)
 
 class Armor:
     def __init__(self, name, protection_chance, heavy):
@@ -80,7 +115,7 @@ class Unit:
         self.xp = 0
         self.xp_to_level_up = 5
 
-        self.weapon = SewingNeedle()
+        self.weapon = Match() if self.heavy else Thumbtack()
         self.armor = PaperArmor()
 
         self.draw_x = x

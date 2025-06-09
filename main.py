@@ -12,6 +12,7 @@ from character import character_from_file
 from unit import *
 from dialogue import DialogueManager
 from item import *
+from particle import Particle
 
 from tcod import path
 
@@ -428,7 +429,7 @@ def main():
 
     popups = []
 
-    buttons = 100
+    buttons = 0
 
     def add_text_popup(text, x, y, color="black"):
         t = SMALL_FONT.render(str(text), True, color)
@@ -444,9 +445,6 @@ def main():
             "y": sy,
             "time": 1.0
         })
-
-    def add_button_pickup(x, y, color="plum"):
-        buttons += 1
 
     def draw_button(scr, x, y, w, h, text):
         can_show_info = True
@@ -515,6 +513,12 @@ def main():
         PaperArmorItem: 1,
         ThumbtackItem: 1
     }
+
+    button_reward = 100
+    reward_falloff = 0.75
+
+    def get_reward(n):
+        return int(button_reward * pow(reward_falloff, n))
 
     run = True
     while run:
@@ -612,7 +616,7 @@ def main():
                                                             messages.append(f"{selected_unit.name} gained {unit.xp_given} xp!")
                                                         enemy_units.remove(unit)
 
-                                                        buttons += random.randint(4, 8)
+                                                        buttons += random.randint(6, 12)
 
                                                     units.remove(unit)
                                                     SOUNDS["smash"].play()
@@ -698,14 +702,13 @@ def main():
                         case -1:
                             w, h = 90, 30
 
-                            if won:
-                                for i in range(len(words)):
-                                    if pygame.Rect(WIDTH // 2 - w // 2, HEIGHT * 0.85 - h // 2 + (h + 10) * i, w, h).collidepoint(pygame.mouse.get_pos()):
-                                        match i:
-                                            case 0:
-                                                menu = 0
-                                            case 1:
-                                                run = False
+                            for i in range(len(words)):
+                                if pygame.Rect(WIDTH // 2 - w // 2, HEIGHT * 0.85 - h // 2 + (h + 10) * i, w, h).collidepoint(pygame.mouse.get_pos()):
+                                    match i:
+                                        case 0:
+                                            menu = 0
+                                        case 1:
+                                            run = False
                         case 0:
                             if dialogue_manager.has_dialogue():
                                 dialogue_manager.on_confirm()
@@ -727,6 +730,8 @@ def main():
                                             else:
                                                 party_inventory.update({ k: 1 })
                                             shop_inventory[k] = max(0, shop_inventory[k] - 1)
+
+                                            SOUNDS['chaChing'].play()
                                 
                                     y += h
                                 
@@ -763,11 +768,23 @@ def main():
                 won = False
                 curtain_timer = 2.0
 
+                reward = get_reward(turn) // 2
+
+                buttons -= reward
+
+                messages.append(f"You lost {reward} buttons!")
+
                 SOUNDS['maintheme'].stop()
             elif len(enemy_units) == 0:
                 battling = False
                 won = True
                 curtain_timer = 2.0
+
+                reward = get_reward(turn)
+
+                buttons += reward
+
+                messages.append(f"You won {reward} buttons!")
 
                 SOUNDS['maintheme'].stop()
 
@@ -990,6 +1007,9 @@ def main():
                     for u in friendly_units + enemy_units:
                         if int(u.x) == x and int(u.y) == y:
                             draw_unit(u, u in friendly_units, cam.x, cam.y, u == selected_unit, selected_action == "move")
+                            if u.weapon:
+                                fx, fy = from_world_pos(u.draw_x + cam.x, u.draw_y + cam.y)
+                                u.weapon.draw(screen, delta, fx, fy, u.character.scale)
 
             battle_ss = screen.copy()
 
@@ -1048,7 +1068,7 @@ def main():
                 x += selected_unit.character.scale * 2
                 y -= selected_unit.character.scale
                 for i in range(len(party_inventory)):
-                    can_show_info = draw_button(screen, x, y, w, h, f"{list(party_inventory.values())[i]}x {list(party_inventory.keys())[i].name}")
+                    can_show_info = draw_button(screen, x, y, w, h, f"{list(party_inventory.values())[i]}x {list(party_inventory.keys())[i]().name}")
                     y += h
 
             # draw ap bar
@@ -1143,21 +1163,20 @@ def main():
 
                     w, h = 90, 30
 
-                    if won:
-                        words = ["Continue", "Quit"]
-                        for i in range(len(words)):
-                            draw_button(surf, WIDTH // 2 - w // 2, HEIGHT * 0.85 - h // 2 + (h + 10) * i, w, h, words[i])
-                
-                        subsurf = pygame.Surface((WIDTH // 2, HEIGHT // 2), pygame.SRCALPHA)
+                    words = ["Continue", "Quit"]
+                    for i in range(len(words)):
+                        draw_button(surf, WIDTH // 2 - w // 2, HEIGHT * 0.85 - h // 2 + (h + 10) * i, w, h, words[i])
+            
+                    subsurf = pygame.Surface((WIDTH // 2, HEIGHT // 2), pygame.SRCALPHA)
 
-                        pygame.draw.rect(subsurf, (0, 0, 0, 128), (0, 0, WIDTH // 2, HEIGHT // 3), 0, 8)
+                    pygame.draw.rect(subsurf, (0, 0, 0, 128), (0, 0, WIDTH // 2, HEIGHT // 3), 0, 8)
 
-                        ly = 5
-                        for line in messages:
-                            subsurf.blit(t := FONT.render(line, True, 'white'), (5, ly))
-                            ly += t.get_height()
+                    ly = 5
+                    for line in messages:
+                        subsurf.blit(t := FONT.render(line, True, 'white'), (5, ly))
+                        ly += t.get_height()
 
-                        surf.blit(subsurf, (WIDTH // 4, HEIGHT // 2 - HEIGHT // 6))
+                    surf.blit(subsurf, (WIDTH // 4, HEIGHT // 2 - HEIGHT // 6))
                 case 0: # shop
                     surf.blit(t := BIG_FONT.render("Shop", True, 'black'), (WIDTH // 2 - t.get_width() // 2 + 2, 7))
                     surf.blit(t := BIG_FONT.render("Shop", True, 'white'), (WIDTH // 2 - t.get_width() // 2, 5))
