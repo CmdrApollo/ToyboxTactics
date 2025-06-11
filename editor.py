@@ -11,7 +11,7 @@ import math
 import numpy as np
 
 from character import character_from_file
-from unit import ScoutUnit, SoldierUnit, HeavyUnit
+from unit import *
 from dialogue import DialogueManager
 
 from tcod import path
@@ -252,12 +252,14 @@ def main():
                     units.append(SoldierUnit(True, u['x'], u['y']))
                 case 'heavy':
                     units.append(HeavyUnit(True, u['x'], u['y']))
+                case 'bori':
+                    units.append(Bori(True, u['x'], u['y']))
 
-        return world_size, level, nature, units, data['during_battle_dialogue'], data['post_battle_dialogue'], data['next_level']
+        return world_size, level, nature, units, data['during_battle_dialogue'], data['post_battle_dialogue'], data['available_sidequests'], data['next_level']
 
     cam = pygame.Vector2(6, -4)
 
-    world_size, level, nature, units, during_dialogue, dialogue, next_level = level_from_file(askopenfilename())
+    world_size, level, nature, units, during_dialogue, dialogue, sidequests, next_level = level_from_file(askopenfilename())
 
     run = True
     while run:
@@ -294,7 +296,7 @@ def main():
 
                             "units": [
                                 {
-                                    "type": ["scout", "soldier", "heavy"][[ScoutUnit, SoldierUnit, HeavyUnit].index(type(unit))],
+                                    "type": ["scout", "soldier", "heavy", "bori"][[ScoutUnit, SoldierUnit, HeavyUnit, Bori].index(type(unit))],
                                     "x": unit.x,
                                     "y": unit.y
                                 }
@@ -303,6 +305,8 @@ def main():
 
                             "during_battle_dialogue": during_dialogue,
                             "post_battle_dialogue": dialogue,
+
+                            "available_sidequests": sidequests,
 
                             "next_level": next_level
                         }

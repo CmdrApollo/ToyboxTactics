@@ -129,6 +129,11 @@
 			"type": "soldier",
 			"x": 7,
 			"y": 0
+		},
+		{
+			"type": "soldier",
+			"x": 0,
+			"y": 2
 		}
 	],
 	"during_battle_dialogue": [
@@ -176,11 +181,7 @@
 			"sending them back out!"
 		]
 	],
-	"reward": 0,
-	"available_sidequests": [
-		"Threadville Hooligans",
-		"YYY",
-		"Face-off Against Bori"
-	],
-	"next_level": "Threadville Hooligans"
+	"reward": 25,
+	"available_sidequests": [],
+	"next_level": "Face-off Against Bori"
 }

@@ -1,3 +1,5 @@
+VERSION = "0.0.1"
+
 import pygame
 import random
 import os
@@ -18,14 +20,75 @@ from tcod import path
 
 all_levels = [
     ("Tutorial", "level1.json"),
+    ("Threadville Hooligans", "sidelevel1.json"),
+    ("YYY", "sidelevel2.json"),
     ("Face-off Against Bori", "level2.json"),
 ]
+
+level_descriptions = [
+    "Replay the tutorial.",
+    "Two toys have gone missing\nfrom Threadville. The village-\npeople suspect foul-play. Find\nthe missing toys!",
+    "Sidequest #2",
+    "Battle Bori, an unrelenting\nforce of chaos. This is the\nend of the demo."
+]
+
+level_challenges = [
+    [
+        "Beat the level.",
+        "Beat the level in 2 turns\nor less.",
+    ],
+    [
+        "Beat the level.",
+        "Beat the level in 3 turns\nor less.",
+    ],
+    [
+        "Beat the level.",
+        "Beat the level in 3 turns\nor less.",
+    ],
+    [
+        "Beat the level.",
+        "Beat the level in 4 turns\nor less.",
+    ]
+]
+
+completed_challenges = [
+    [
+        False,
+        False,
+    ],
+    [
+        False,
+        False,
+    ],
+    [
+        False,
+        False,
+    ],
+    [
+        False,
+        False,
+    ]
+]
+
+def get_level_with_name(name):
+    for level in all_levels:
+        if level[0] == name:
+            return level
+    return None
+
+available_levels = [
+    all_levels[0]
+]
+
+played_levels = []
 
 sell_falloff = 0.25
 
 character_names = ["Milo", "Toto", "Grub"]
 character_colors = ["#ff8080", "#80ff80", "#8080ff"]
 character_classes = [ScoutUnit, SoldierUnit, HeavyUnit]
+
+character_buffer = []
 
 OUTLINE = True
 PAPERTEX = False
@@ -37,8 +100,12 @@ SOUNDS = {}
 for f in glob.glob(os.path.join('assets', 'audio', '**.wav')):
     SOUNDS.update({f.split('\\')[-1].split('.')[0]: pygame.mixer.Sound(f)})
 
+for i in SOUNDS:
+    SOUNDS[i].set_volume(0.0)
+
 pygame.display.set_caption("Toybox Tactics")
 
+WRONG_FONT = pygame.font.Font(os.path.join("assets", "visual", "Smudge.ttf"), 24)
 FONT = pygame.font.Font(os.path.join("assets", "visual", "nunito.ttf"), 24)
 SMALL_FONT = pygame.font.Font(os.path.join("assets", "visual", "nunito.ttf"), 16)
 BIG_FONT = pygame.font.Font(os.path.join("assets", "visual", "nunito.ttf"), 30)
@@ -238,35 +305,6 @@ def draw_unit(unit, friendly, x, y, is_selected=False, show_path=False):
 
     character.draw(screen, pygame.Vector2(0, 0), False, False, PAPERTEX, _tex, 'skyblue' if friendly else 'brown1', is_selected)
 
-    if unit.defending:
-        draw_shield(unit.draw_x + x, unit.draw_y + y)
-
-def draw_shield(x, y):
-    i, j = from_world_pos(x, y)
-
-    j -= TILE_SIZE[1] / 2
-
-    pygame.draw.polygon(screen, "darkslategray", [
-        (i + TILE_SIZE[0] / 2, j),
-        (i + TILE_SIZE[0] * 0.7, j + TILE_SIZE[1] / 2),
-        (i + TILE_SIZE[0] / 2, j + TILE_SIZE[1] * 1.25),
-        (i + TILE_SIZE[0] * 0.3, j + TILE_SIZE[1] / 2),
-    ])
-
-    pygame.draw.polygon(screen, "cadetblue", [
-        (i + TILE_SIZE[0] / 2, j + TILE_SIZE[1] * 0.25),
-        (i + TILE_SIZE[0] * 0.6, j + TILE_SIZE[1] / 2),
-        (i + TILE_SIZE[0] / 2, j + TILE_SIZE[1] * 1),
-        (i + TILE_SIZE[0] * 0.4, j + TILE_SIZE[1] / 2),
-    ])
-
-    pygame.draw.polygon(screen, "white", [
-        (i + TILE_SIZE[0] / 2, j),
-        (i + TILE_SIZE[0] * 0.7, j + TILE_SIZE[1] / 2),
-        (i + TILE_SIZE[0] / 2, j + TILE_SIZE[1] * 1.25),
-        (i + TILE_SIZE[0] * 0.3, j + TILE_SIZE[1] / 2),
-    ], 2)
-
 def draw_star(win, x, y, scale=10, rotation=0, col='lightyellow'):
     points = [
         [
@@ -295,10 +333,28 @@ def GenerateSolidsMap(input_map, units_input, world_width=10, world_height=10):
 def play_tap_sound():
     SOUNDS[f"tap{random.randint(1, 3)}"].play()
 
+def save_characters():
+    # TODO FINISH THIS POST-DEMO
+
+    global character_buffer
+
+    data = {
+        "characters": [
+            {
+
+            }
+        ]
+    }
+
 def main():
+    global character_buffer
+    global available_levels
     clock = pygame.time.Clock()
     delta = 0.0
 
+    main_menu_loadin = 1.0
+
+    main_menu = True
     splash_screen = 4.0
 
     cam = pygame.Vector2(6, -4)
@@ -333,15 +389,17 @@ def main():
                     units.append(SoldierUnit(True, u['x'], u['y']))
                 case 'heavy':
                     units.append(HeavyUnit(True, u['x'], u['y']))
+                case 'bori':
+                    units.append(Bori(True, u['x'], u['y']))
 
-        return world_size, level, nature, units, data['during_battle_dialogue'], data['post_battle_dialogue'], data['next_level']
+        return world_size, level, nature, units, data['during_battle_dialogue'], data['post_battle_dialogue'], data['available_sidequests'], data['next_level'], data['reward']
 
     current_level = 0
 
     level_name, level_filename = all_levels[current_level]
 
     # schemas are forest, mountain, desert, icy, and chaos
-    world_size, schema, nature, enemy_units, thru_dialogue, end_dialogue, next_level = level_from_file(os.path.join("assets", "levels", level_filename))
+    world_size, schema, nature, enemy_units, thru_dialogue, end_dialogue, available_sidequests, next_level, level_reward = level_from_file(os.path.join("assets", "levels", level_filename))
 
     friendly_units = []
     
@@ -509,12 +567,17 @@ def main():
         dialogue_manager.queue_text(thru_dialogue[turn][i])
 
     shop_inventory = {
-        Potion: 3,
-        PaperArmorItem: 1,
-        ThumbtackItem: 1
+        Potion: 10,
+        PaperArmorItem: 2,
+        ThumbtackItem: 2,
+        CardboardArmor: 2,
+        Toothpick: 2,
+        FoilArmor: 2,
+        SewingNeedle: 2,
+        Match: 1
     }
 
-    button_reward = 100
+    button_reward = 80
     reward_falloff = 0.75
 
     def get_reward(n):
@@ -522,7 +585,7 @@ def main():
 
     run = True
     while run:
-        delta = clock.tick_busy_loop(pygame.display.get_current_refresh_rate()) / 1000.0
+        delta = clock.tick_busy_loop(60) / 1000.0
 
         keys = pygame.key.get_pressed()
 
@@ -542,11 +605,18 @@ def main():
 
         if splash_screen:
             splash_screen_surf = pygame.Surface((WIDTH, HEIGHT))
-            splash_screen_surf.fill('lightcyan')
-            for x in range(WIDTH // 50):
-                for y in range(HEIGHT // 50):
+            splash_screen_surf.fill('mediumpurple')
+            
+            t = pygame.time.get_ticks() / 150
+            t %= 50
+
+            for x in range(WIDTH // 50 + 1):
+                for y in range(HEIGHT // 50 + 1):
                     if (x + y) % 2 == 0:
-                        pygame.draw.rect(splash_screen_surf, darken('lightcyan', 0.1), (x * 50, y * 50, 50, 50))
+                        fx, fy = 25 + x * 50 - t, 25 + y * 50 - t
+                        q = 1 - abs(2 * ((fx + fy) / (WIDTH + HEIGHT) - 0.5))
+                        r = 25 * pow(q, 1)
+                        pygame.draw.circle(splash_screen_surf, darken('mediumpurple', 0.1), (fx, fy), r)
 
             splash_screen_surf.blit(PG_CE_POWERED, (WIDTH - PG_CE_POWERED.get_width() - 5, HEIGHT - PG_CE_POWERED.get_height() - 5))
 
@@ -560,7 +630,7 @@ def main():
             black_screen = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
             black_screen.fill('black')
             z = splash_screen / 4.0
-            black_screen.set_alpha(int(255 * abs(2 * (z - 0.5)) ** 2))
+            black_screen.set_alpha(int(255 * pow(2 * (z - 0.5), 2)))
             screen.blit(black_screen, (0, 0))
 
             pygame.display.flip()
@@ -568,6 +638,53 @@ def main():
 
         if sp:
             SOUNDS['maintheme'].play()
+
+        if main_menu:
+            for event in evs:
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    w, h = 80, 30
+                    s = 10
+                    if pygame.Rect(WIDTH // 2 - w // 2, HEIGHT // 2 - h // 2 + (h + s) * 0, w, h).collidepoint(pygame.mouse.get_pos()):
+                        main_menu = False
+                    if pygame.Rect(WIDTH // 2 - w // 2, HEIGHT // 2 - h // 2 + (h + s) * 1, w, h).collidepoint(pygame.mouse.get_pos()):
+                        run = False
+
+            main_menu_loadin = max(0, main_menu_loadin - delta)
+
+            screen.fill('mediumpurple')
+            
+            t = pygame.time.get_ticks() / 150
+            t %= 50
+
+            for x in range(WIDTH // 50 + 1):
+                for y in range(HEIGHT // 50 + 1):
+                    if (x + y) % 2 == 0:
+                        fx, fy = 25 + x * 50 - t, 25 + y * 50 - t
+                        q = 1 - abs(2 * ((fx + fy) / (WIDTH + HEIGHT) - 0.5))
+                        r = 25 * pow(q, 1)
+                        pygame.draw.circle(screen, darken('mediumpurple', 0.1), (fx, fy), r)
+
+            screen.blit(PG_CE_POWERED, (WIDTH - PG_CE_POWERED.get_width() - 5, HEIGHT - PG_CE_POWERED.get_height() - 5))
+
+            screen.blit(t := BIG_FONT.render("Toybox Tactics", True, 'black'), (2 + WIDTH // 2 - t.get_width() // 2, 2 + HEIGHT // 4 - t.get_height() // 2))
+            screen.blit(t := BIG_FONT.render("Toybox Tactics", True, 'white'), (WIDTH // 2 - t.get_width() // 2, HEIGHT // 4 - t.get_height() // 2))
+
+            w, h = 80, 30
+            s = 10
+            draw_button(screen, WIDTH // 2 - w // 2, HEIGHT // 2 - h // 2 + (h + s) * 0, w, h, "Play")
+            draw_button(screen, WIDTH // 2 - w // 2, HEIGHT // 2 - h // 2 + (h + s) * 1, w, h, "Quit")
+
+            screen.blit(t := SMALL_FONT.render(f"A Paper Opcode Game | v{VERSION}", True, 'white'), (5, HEIGHT - t.get_height() - 5))
+
+            black_screen = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
+            black_screen.fill('black')
+            z = main_menu_loadin
+            black_screen.set_alpha(int(255 * pow(z, 2)))
+            screen.blit(black_screen, (0, 0))
+
+            pygame.display.flip()
+
+            continue
 
         for event in evs:
             if event.type == pygame.KEYDOWN:
@@ -591,18 +708,20 @@ def main():
                         if selected_action == "move":
                             if selected_pos in allowed_moves:
                                 units_should_move = True
-                                selected_unit.defending = False
                         elif selected_action == "attack":
                             if selected_pos in allowed_attacks:
                                 for unit in units:
                                     if unit.x == selected_pos[0] and unit.y == selected_pos[1]:
                                         if unit != selected_unit:
                                             if unit.health > 0:
-                                                if unit.armor and random.random() <= unit.armor.protection_chance:
+                                                if unit.armor and random.random() <= unit.armor.protection_chance + unit.defense / 100:
                                                     add_text_popup(f"Protected!", unit.x + cam.x, unit.y + cam.y, "forestgreen")
                                                 else:
-                                                    add_text_popup(f"-{selected_unit.weapon.damage}", unit.x + cam.x, unit.y + cam.y, "brown1")
-                                                    unit.health -= selected_unit.weapon.damage
+                                                    d = selected_unit.weapon.damage
+                                                    d += random.randint(0, selected_unit.strength)
+                                                    if unit.armor: d -= random.randint(0, unit.armor.protection_value)
+                                                    add_text_popup(f"-{d}", unit.x + cam.x, unit.y + cam.y, "brown1")
+                                                    unit.health -= d
                                                 if unit.health <= 0:
                                                     if unit in friendly_units:
                                                         friendly_units.remove(unit)
@@ -629,20 +748,19 @@ def main():
                                 selected_action = "none"
                                 selected_unit.action_points -= 1
                         elif selected_action == "items":
-                            # TODO it ain't working
-                            w, h = 80, 30
+                            w, h = 100, 30
                             x, y = from_world_pos(selected_unit.x + cam.x, selected_unit.y + cam.y)
                             x += selected_unit.character.scale * 2
                             y -= selected_unit.character.scale
                             for i in range(len(party_inventory)):
-                                if pygame.Rect(x, y, w, h).collidepoint(mx, my):
-                                    print("bye")
-                                    if not list(party_inventory.keys())[i].requires_target:
-                                        o = list(party_inventory.keys())[i].on_use(selected_unit, None)
+                                if pygame.Rect(x, y, w, h).collidepoint(pygame.mouse.get_pos()):
+                                    if not list(party_inventory.keys())[i]().requires_target:
+                                        o = list(party_inventory.keys())[i]().on_use(selected_unit, None)
                                         party_inventory.update({ list(party_inventory.keys())[i]: list(party_inventory.values())[i] - 1 })
                                         if o:
                                             add_text_popup(o[0], selected_unit.x + cam.x, selected_unit.y + cam.y, o[1])
                                         selected_action = "none"
+                                        selected_unit.action_points -= 1
                                     else:
                                         getting_target = True
                                 y += h
@@ -654,17 +772,16 @@ def main():
                             y -= selected_unit.character.scale
                             for i in range(4):
                                 if pygame.Rect(x, y, w, h).collidepoint(pygame.mouse.get_pos()):
-                                    selected_action = ["move", "attack", "items", "defend"][i]
+                                    selected_action = ["move", "attack", "items", "wait"][i]
                                     
                                     if selected_action == "attack":
                                         allowed_attacks = get_grid_of_size(selected_unit, selected_unit.weapon.range)
                                         
                                         SOUNDS["swoosh"].play()
 
-                                    if selected_action == "defend":
+                                    if selected_action == "wait":
                                         selected_action = "none"
                                         
-                                        selected_unit.defending = True
                                         selected_unit.action_points  = 0
 
                                         SOUNDS["unknown"].play()
@@ -674,7 +791,14 @@ def main():
                                 y += h
                         elif selected_action == "none" and not placed:
                             if nature[selected_pos[1] * world_size[0] + selected_pos[0]] == 16:
-                                friendly_units.append(character_classes[placing_unit](True, selected_pos[0], selected_pos[1], character_names[placing_unit]))
+                                if not len(character_buffer):
+                                    friendly_units.append(character_classes[placing_unit](True, selected_pos[0], selected_pos[1], character_names[placing_unit]))
+                                else:
+                                    friendly_units.append(character_buffer.pop(0))
+                                    friendly_units[-1].health = friendly_units[-1].max_health
+                                    friendly_units[-1].action_points = friendly_units[-1].max_action_points
+                                    friendly_units[-1].x = friendly_units[-1].target_x = friendly_units[-1].draw_x = selected_pos[0]
+                                    friendly_units[-1].y = friendly_units[-1].target_y = friendly_units[-1].draw_y = selected_pos[1]
                                 placing_unit += 1
 
                                 nature[selected_pos[1] * world_size[0] + selected_pos[0]] = 0
@@ -746,6 +870,20 @@ def main():
                             if dialogue_manager.has_dialogue():
                                 dialogue_manager.on_confirm()
                             else:
+                                w, h = 200, 30
+                                x, y = WIDTH // 3 - w // 2, HEIGHT // 3
+
+                                surf.blit(t := FONT.render("Available Battles", True, 'black'), (x + 1, y + 1))
+                                surf.blit(t := FONT.render("Available Battles", True, 'white'), (x, y))
+
+                                y += t.get_height() + 5
+
+                                for i, (name, filename) in enumerate(available_levels):
+                                    if pygame.Rect(x, y, w, h).collidepoint(mx, my):
+                                        current_level = all_levels.index(get_level_with_name(name))
+                                        break
+                                    y += h
+
                                 w, h = 100, 30
                                 if pygame.Rect(WIDTH - w - 10, HEIGHT - h - 10, w, h).collidepoint(mx, my):
                                     menu = 2
@@ -756,9 +894,40 @@ def main():
                                 dialogue_manager.on_confirm()
                             else:
                                 w, h = 100, 30
-                                if pygame.Rect(WIDTH - w - 10, HEIGHT - h - 10, w, h).collidepoint(mx, my):
+                                if pygame.Rect(WIDTH - w - 10, HEIGHT - h - 10, w, h).collidepoint(mx, my) and next_level:
                                     # TO BATTLE !!!!
-                                    pass
+                                    level_name, level_filename = all_levels[current_level]
+
+                                    # schemas are forest, mountain, desert, icy, and chaos
+                                    world_size, schema, nature, enemy_units, thru_dialogue, end_dialogue, available_sidequests, next_level, level_reward = level_from_file(os.path.join("assets", "levels", level_filename))
+                                                                        
+                                    character_buffer = friendly_units.copy()
+                                    save_characters()
+                                    friendly_units = []
+                                    
+                                    units = []
+
+                                    current_unit = 0
+
+                                    turn = 0
+
+                                    selected_unit = None
+
+                                    c = GenerateSolidsMap(nature, units, world_size[0], world_size[1])
+
+                                    graph = path.SimpleGraph(cost=c, cardinal=1, diagonal=0)
+
+                                    c2 = GenerateSolidsMap(nature, enemy_units, world_size[0], world_size[1])
+
+                                    graph_enemies_only = path.SimpleGraph(cost=c2, cardinal=1, diagonal=0)
+
+                                    menu = -1
+                                    placing_unit = 0
+                                    battling = True
+                                    placed = False
+
+                                    messages = []
+                                    popups.clear()
                                 if pygame.Rect(10, HEIGHT - h - 10, w, h).collidepoint(mx, my):
                                     menu = 1
 
@@ -770,7 +939,7 @@ def main():
 
                 reward = get_reward(turn) // 2
 
-                buttons -= reward
+                buttons = max(0, buttons - reward)
 
                 messages.append(f"You lost {reward} buttons!")
 
@@ -780,11 +949,33 @@ def main():
                 won = True
                 curtain_timer = 2.0
 
+                available_levels += [get_level_with_name(n) for n in available_sidequests]
+
+                played_levels.append(get_level_with_name(level_name))
+
+                match current_level:
+                    case 0:
+                        n = 2
+                    case 1 | 2:
+                        n = 3
+                    case 3:
+                        n = 4
+
+                completed_challenges[current_level][0] = True
+                completed_challenges[current_level][1] = turn // 2 < n
+
+                if next_level:
+                    current_level = all_levels.index(get_level_with_name(next_level))
+
                 reward = get_reward(turn)
 
                 buttons += reward
 
                 messages.append(f"You won {reward} buttons!")
+
+                if level_reward > 0:
+                    buttons += level_reward
+                    messages.append(f"You were rewarded {level_reward} buttons!")
 
                 SOUNDS['maintheme'].stop()
 
@@ -823,8 +1014,11 @@ def main():
                                 if unit.armor and random.random() <= unit.armor.protection_chance:
                                     add_text_popup(f"Protected!", unit.x + cam.x, unit.y + cam.y, "forestgreen")
                                 else:
-                                    add_text_popup(f"-{selected_unit.weapon.damage}", unit.x + cam.x, unit.y + cam.y, "brown1")
-                                    unit.health -= selected_unit.weapon.damage
+                                    d = selected_unit.weapon.damage
+                                    d += random.randint(0, selected_unit.strength)
+                                    if unit.armor: d -= random.randint(0, unit.armor.protection_value)
+                                    add_text_popup(f"-{d}", unit.x + cam.x, unit.y + cam.y, "brown1")
+                                    unit.health -= d
                                 if unit.health <= 0:
                                     if unit in friendly_units:
                                         friendly_units.remove(unit)
@@ -839,7 +1033,6 @@ def main():
 
                             animation_time = 0.5
                         else:                    
-                            selected_unit.defending = True
                             selected_unit.action_points  = 0
 
                             SOUNDS["unknown"].play()
@@ -953,6 +1146,17 @@ def main():
 
             screen.blit(BG, (0, 0))
 
+            t = pygame.time.get_ticks() / 100
+            t %= 50
+
+            for x in range(WIDTH // 50 + 1):
+                for y in range(HEIGHT // 50 + 1):
+                    if (x + y) % 2 == 0:
+                        fx, fy = 25 + x * 50 - t, 25 + y * 50 - t
+                        q = 1 - abs(2 * (((fx + fy) / (WIDTH + HEIGHT) - 0.5)))
+                        r = 25 * pow(q, 1)
+                        pygame.draw.circle(screen, darken(pygame.Color('darkslategray2').lerp('darkslategray4', clamp(fy / HEIGHT, 0, 1)), 0.1), (fx, fy), r)
+
             match schema:
                 case "forest":
                     colors = ["darkolivegreen2"]
@@ -1037,7 +1241,7 @@ def main():
                     x += selected_unit.character.scale * 2
                     y -= selected_unit.character.scale
                     for i in range(4):
-                        can_show_info = draw_button(screen, x, y, w, h, ["Move", "Attack", "Items", "Defend"][i])
+                        can_show_info = draw_button(screen, x, y, w, h, ["Move", "Attack", "Items", "Wait"][i])
                         y += h
 
                 # draw unit info
@@ -1048,16 +1252,18 @@ def main():
                         if unit.x == selected_pos[0] and unit.y == selected_pos[1]:
                             mx, my = pygame.mouse.get_pos()
                             mx -= 150
-                            pygame.draw.rect(screen, 'darkgray', (mx, my, 300, 40), 0, -1, 8, 8)
-                            pygame.draw.rect(screen, 'gray', (mx, my + 40, 300, 160), 0, -1, -1, -1, 8, 8)
+                            pygame.draw.rect(screen, '#606060', (mx, my, 300, 40), 0, -1, 8, 8)
+                            pygame.draw.rect(screen, '#404040', (mx, my + 40, 300, 160), 0, -1, -1, -1, 8, 8)
                             
                             info_string = f"{unit.name}"
                             if unit in friendly_units: info_string += f" ({unit.health}/{unit.max_health} HP)"
 
-                            screen.blit(t := FONT.render(info_string, True, 'black'), (mx + 150 - t.get_width() / 2, my + 5))
+                            screen.blit(t := FONT.render(info_string, True, 'black'), (1 + mx + 150 - t.get_width() / 2, 1 + my + 5))
+                            screen.blit(t := FONT.render(info_string, True, 'white'), (mx + 150 - t.get_width() / 2, my + 5))
                             
-                            for i, line in enumerate(unit.description):
-                                screen.blit(t := SMALL_FONT.render(line, True, 'black'), (mx + 150 - t.get_width() / 2, my + 45 + i * SMALL_FONT.size(line)[1]))
+                            for i, line in enumerate(unit.description + ["", "Equipped with:", f"{unit.armor.name}, {unit.weapon.name}"]):
+                                screen.blit(t := SMALL_FONT.render(line, True, 'black'), (1 + mx + 5, 1 + my + 45 + i * SMALL_FONT.size(line)[1]))
+                                screen.blit(t := SMALL_FONT.render(line, True, 'white'), (mx + 5, my + 45 + i * SMALL_FONT.size(line)[1]))
 
                             break
             elif selected_action == "items" and not turn & 1:
@@ -1148,13 +1354,16 @@ def main():
             
             surf.fill(colors[0])
 
-            t = pygame.time.get_ticks() / 50
+            t = pygame.time.get_ticks() / 100
             t %= 50
 
             for x in range(WIDTH // 50 + 1):
                 for y in range(HEIGHT // 50 + 1):
                     if (x + y) % 2 == 0:
-                        pygame.draw.rect(surf, colors[1], (x * 50 - t, y * 50 - t, 50, 50))
+                        fx, fy = 25 + x * 50 - t, 25 + y * 50 - t
+                        q = 1 - abs(2 * (((fx + fy) / (WIDTH + HEIGHT) - 0.5)))
+                        r = 25 * pow(q, 1)
+                        pygame.draw.circle(surf, colors[1], (fx, fy), r)
 
             match menu:
                 case -1:
@@ -1248,6 +1457,72 @@ def main():
                 case 1: # tavern
                     surf.blit(t := BIG_FONT.render("Tavern", True, 'black'), (WIDTH // 2 - t.get_width() // 2 + 2, 7))
                     surf.blit(t := BIG_FONT.render("Tavern", True, 'white'), (WIDTH // 2 - t.get_width() // 2, 5))
+                    
+                    w, h = 200, 30
+                    x, y = WIDTH // 3 - w // 2, HEIGHT // 3
+
+                    surf.blit(t := FONT.render("Available Battles", True, 'black'), (x + 1, y + 1))
+                    surf.blit(t := FONT.render("Available Battles", True, 'white'), (x, y))
+
+                    y += t.get_height() + 5
+
+                    for i, (name, filename) in enumerate(available_levels):
+                        t = name
+                        option_surf = pygame.Surface((w, h), pygame.SRCALPHA)
+
+                        if name == all_levels[current_level][0]:
+                            color = (255, 192, 0, 192) if pygame.Rect(x, y, w, h).collidepoint(pygame.mouse.get_pos()) else (255, 192, 0, 128)
+                        else:
+                            color = (0, 0, 0, 192) if pygame.Rect(x, y, w, h).collidepoint(pygame.mouse.get_pos()) else (0, 0, 0, 128)
+
+                        if len(available_levels) == 1:
+                            pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, 8)
+                        else:
+                            if i == 0:
+                                pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, -1, 8, 8, -1, -1)
+                            elif i == len(available_levels) - 1:
+                                pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, -1, -1, -1, 8, 8)
+                            else:
+                                pygame.draw.rect(option_surf, color, (0, 0, w, h))
+
+                        surf.blit(option_surf, (x, y))
+                        surf.blit(text := SMALL_FONT.render(t, True, 'white'), (x + 5, y + h // 2 - text.get_height() // 2))
+
+                        y += h
+
+                    x, y = WIDTH * (2 / 3) - w // 2, HEIGHT // 3
+
+                    surf.blit(t := FONT.render("Selected Battle", True, 'black'), (x + 1, y + 1))
+                    surf.blit(t := FONT.render("Selected Battle", True, 'white'), (x, y))
+
+                    w *= 1.75
+                    h *= 10
+                    h += 10
+
+                    y += t.get_height() + 5
+
+                    l = all_levels[current_level]
+
+                    t = f"{l[0]}"
+                    option_surf = pygame.Surface((w, h), pygame.SRCALPHA)
+
+                    color = (0, 0, 0, 192)
+
+                    pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, 8)
+
+                    surf.blit(option_surf, (x, y))
+                    surf.blit(text := BIG_FONT.render(t, True, 'white'), (x + 5, y + 5))
+
+                    y += 5 + text.get_height()
+
+                    surf.blit(text := FONT.render(level_descriptions[current_level], True, 'white'), (x + 5, y))
+                    y += text.get_height() + FONT.size(' ')[1]
+
+                    for index, challenge in enumerate(level_challenges[current_level]):
+                        surf.blit(text := FONT.render(challenge, True, 'white'), (x + 5, y))
+                        y += text.get_height()
+                        draw_star(surf, x + w - 20, y - 20, 15, col='yellow' if completed_challenges[current_level][index] else 'gray')
+
                     dialogue_manager.draw(surf)
 
                     w, h = 100, 30
@@ -1256,6 +1531,10 @@ def main():
                 case 2: # toybox
                     surf.blit(t := BIG_FONT.render("Toybox", True, 'black'), (WIDTH // 2 - t.get_width() // 2 + 2, 7))
                     surf.blit(t := BIG_FONT.render("Toybox", True, 'white'), (WIDTH // 2 - t.get_width() // 2, 5))
+                    
+                    surf.blit(t := FONT.render(f"Selected Battle: {all_levels[current_level][0]}", True, 'black'), (WIDTH // 2 - t.get_width() // 2 + 1, HEIGHT - t.get_height() - 5 + 1))
+                    surf.blit(t := FONT.render(f"Selected Battle: {all_levels[current_level][0]}", True, 'white'), (WIDTH // 2 - t.get_width() // 2, HEIGHT - t.get_height() - 5))
+
                     dialogue_manager.draw(surf)
 
                     w, h = 100, 30

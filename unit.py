@@ -18,6 +18,8 @@ def lerp(a, b, t):
 XP_MOD = 1.2
 
 class Weapon:
+    price = 100
+
     def __init__(self, name, damage, r, heavy):
         self.name = name
         self.damage = damage
@@ -34,6 +36,8 @@ class Weapon:
         pass
 
 class Thumbtack(Weapon):
+    price = 25
+
     def __init__(self):
         super().__init__("Thumbtack", 5, 1, False)
 
@@ -47,6 +51,8 @@ class Thumbtack(Weapon):
         ])
 
 class Toothpick(Weapon):
+    price = 30
+
     def __init__(self):
         super().__init__("Toothpick", 4, 2, False)
 
@@ -54,6 +60,8 @@ class Toothpick(Weapon):
         pygame.draw.line(win, 'chocolate', (x + 2 * scale, y - scale), (x + 2 * scale, y + scale), scale // 6)
 
 class SewingNeedle(Weapon):
+    price = 50
+
     def __init__(self):
         super().__init__("Sewing Needle", 5, 2, True)
 
@@ -61,6 +69,8 @@ class SewingNeedle(Weapon):
         pygame.draw.line(win, 'silver', (x + 2 * scale, y - scale), (x + 2 * scale, y + scale), scale // 6)
 
 class Match(Weapon):
+    price = 100
+
     def __init__(self):
         super().__init__("Match", 4, 2, True)
         self.particles = [Particle(-50, -50, 0.5 * random.random() + 1.0) for _ in range(10)]
@@ -75,24 +85,33 @@ class Match(Weapon):
             p.draw(win)
 
 class Armor:
-    def __init__(self, name, protection_chance, heavy):
+    price = 100
+
+    def __init__(self, name, protection_chance, protection_value, heavy):
         self.name = name
         self.protection_chance = protection_chance
+        self.protection_value = protection_value
         self.heavy = heavy
 
 class PaperArmor(Armor):
+    price = 30
+
     def __init__(self):
-        super().__init__("Paper Armor", 0.1, False)
+        super().__init__("Paper Armor", 0.1, 1, False)
 
 class CardboardArmor(Armor):
+    price = 50
     def __init__(self):
-        super().__init__("Cardboard Armor", 0.2, False)
+        super().__init__("Cardboard Armor", 0.2, 1, False)
 
 class FoilArmor(Armor):
+    price = 80
     def __init__(self):
-        super().__init__("Foil Armor", 0.3, True)
+        super().__init__("Foil Armor", 0.3, 2, True)
 
 class Unit:
+    classname = "Unit"
+
     def __init__(self, placed, name, description, heavy, health, action_points, character, max_move, xp_given, strength, defense, x, y):
         self.name = name
         self.description = description
@@ -115,8 +134,8 @@ class Unit:
         self.xp = 0
         self.xp_to_level_up = 5
 
-        self.weapon = Match() if self.heavy else Thumbtack()
-        self.armor = PaperArmor()
+        self.weapon = Match() if self.name == "Bori" else Thumbtack()
+        self.armor = CardboardArmor() if name in ["Milo", "Toto", "Grub"] else PaperArmor()
 
         self.draw_x = x
         self.draw_y = y
@@ -160,13 +179,17 @@ class Unit:
             self.xp_to_level_up = int(self.xp_to_level_up * XP_MOD)
 
             self.level += 1
+
+            self.strength += random.randint(1, 3)
+            self.defense += random.randint(1, 3)
             
             return True
 
         return False
 
 class ScoutUnit(Unit):
-    def __init__(self, placed, x, y, name = "Scout"):
+    classname = "Scout"
+    def __init__(self, placed, x, y, name = classname):
         super().__init__(placed, name, [
             "The Scout is a fast and agile unit,",
             "perfect for reconnaissance and quick",
@@ -174,16 +197,26 @@ class ScoutUnit(Unit):
         ], False, 15, 3, character_from_file(os.path.join("assets", "characters", "scout.char")), 3, 1, 1, 1, x, y)
     
 class SoldierUnit(Unit):
-    def __init__(self, placed, x, y, name = "Soldier"):
+    classname = "Soldier"
+    def __init__(self, placed, x, y, name = classname):
         super().__init__(placed, name, [
             "The Soldier is a balanced unit,",
             "capable of both offense and defense.",
         ], False, 20, 2, character_from_file(os.path.join("assets", "characters", "soldier.char")), 3, 2, 1, 2, x, y)
 
 class HeavyUnit(Unit):
-    def __init__(self, placed, x, y, name = "Hvy. Soldier"):
+    classname = "Hvy. Soldier"
+    def __init__(self, placed, x, y, name = classname):
         super().__init__(placed, name, [
             "The Heavy Soldier is a powerful unit,",
             "with high health and damage output,",
             "but slower movement speed.",
         ], True, 30, 2, character_from_file(os.path.join("assets", "characters", "heavy.char")), 2, 3, 2, 1, x, y)
+        
+class Bori(Unit):
+    def __init__(self, placed, x, y, name = "Bori"):
+        super().__init__(placed, name, [
+            "Bori has been completely and utterly",
+            "corrupted by chaos, and acts as a",
+            "powerful host for the maligned force."
+        ], True, 50, 3, character_from_file(os.path.join("assets", "characters", "bori.char")), 2, 6, 2, 1, x, y)

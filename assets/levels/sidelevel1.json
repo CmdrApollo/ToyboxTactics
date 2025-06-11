@@ -1,0 +1,171 @@
+{
+	"width": 10,
+	"height": 10,
+	"schema": "icy",
+	"scenery": [
+		[
+			3,
+			3,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			3,
+			3
+		],
+		[
+			3,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			3
+		],
+		[
+			0,
+			0,
+			1,
+			0,
+			0,
+			0,
+			2,
+			0,
+			0,
+			0
+		],
+		[
+			0,
+			0,
+			0,
+			0,
+			2,
+			0,
+			0,
+			0,
+			1,
+			0
+		],
+		[
+			0,
+			1,
+			0,
+			0,
+			0,
+			0,
+			1,
+			0,
+			0,
+			0
+		],
+		[
+			0,
+			0,
+			0,
+			1,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0
+		],
+		[
+			0,
+			0,
+			0,
+			0,
+			0,
+			2,
+			0,
+			0,
+			0,
+			0
+		],
+		[
+			16,
+			16,
+			16,
+			16,
+			16,
+			16,
+			16,
+			16,
+			1,
+			16
+		],
+		[
+			3,
+			16,
+			1,
+			16,
+			16,
+			16,
+			2,
+			16,
+			16,
+			3
+		],
+		[
+			3,
+			3,
+			16,
+			16,
+			1,
+			16,
+			16,
+			16,
+			3,
+			3
+		]
+	],
+	"units": [
+		{
+			"type": "soldier",
+			"x": 8,
+			"y": 2
+		},
+		{
+			"type": "scout",
+			"x": 1,
+			"y": 2
+		}
+	],
+	"during_battle_dialogue": [
+		[
+			[
+				"<#ff8080>Milo</>",
+				"Look, everyone! We've found the",
+				"missing toys!"
+			],
+			[
+				"<#8080ff>Grub</>",
+				"Milo... Methinks those toys",
+				"corrupted!"
+			],
+			[
+				"<#ff8080>Milo</>",
+				"It would seem that you're right,",
+				"Grub. Let's take care of this and",
+				"return to Threadville with the news."
+			]
+		]
+	],
+	"post_battle_dialogue": [
+		[
+			"<#808080>Tutorial</>",
+			"Great work! You've completed a side-",
+			"quest and earned yourself a reward",
+			"in so doing! Go spend your well earned",
+			"buttons!"
+		]
+	],
+	"reward": 25,
+	"available_sidequests": [],
+	"next_level": "Face-off Against Bori"
+}

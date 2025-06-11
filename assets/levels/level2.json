@@ -22,8 +22,8 @@
 			0,
 			4,
 			4,
-			0,
-			0,
+			16,
+			16,
 			3,
 			3
 		],
@@ -34,9 +34,9 @@
 			2,
 			3,
 			3,
-			0,
-			0,
-			0,
+			16,
+			16,
+			16,
 			3
 		],
 		[
@@ -94,9 +94,9 @@
 			2,
 			3,
 			3,
-			0,
-			0,
-			0,
+			16,
+			16,
+			16,
 			3
 		],
 		[
@@ -106,8 +106,8 @@
 			0,
 			4,
 			4,
-			0,
-			0,
+			16,
+			16,
 			3,
 			3
 		],
@@ -131,19 +131,43 @@
 			"y": 3
 		},
 		{
-			"type": "soldier",
+			"type": "bori",
 			"x": 2,
 			"y": 6
 		}
 	],
-	"during_battle_dialogue": [],
+	"during_battle_dialogue": [
+		[
+			[
+				"<#ff80ff>Bori</>"
+			]
+		]
+	],
 	"post_battle_dialogue": [
 		[
 			"<#ff8080>Milo</>",
 			"Good work, team! It won't be",
 			"easy, but chaos is no match",
 			"for us!"
+		],
+		[
+			"<#808080>Tutorial</>",
+			"Thank you for playing the",
+			"Toybox Tactics playtesting",
+			"demo! You can replay any of",
+			"the battles you have played,",
+			"or play battles you missed."
+		],
+		[
+			"<#808080>Tutorial</>",
+			"When you're ready, close the",
+			"game! I would greatly appreciate",
+			"if you filled out the feedback",
+			"form located on the demo's",
+			"itch.io page. Thank you very much!"
 		]
 	],
+	"reward": 0,
+	"available_sidequests": [],
 	"next_level": null
 }
