@@ -145,8 +145,7 @@
 			],
 			[
 				"<#8080ff>Grub</>",
-				"Milo... Methinks those toys",
-				"corrupted!"
+				"Milo... Those toys are corrupted!"
 			],
 			[
 				"<#ff8080>Milo</>",
@@ -167,5 +166,5 @@
 	],
 	"reward": 25,
 	"available_sidequests": [],
-	"next_level": "Face-off Against Bori"
+	"next_level": "Mountain Pass Bullies"
 }

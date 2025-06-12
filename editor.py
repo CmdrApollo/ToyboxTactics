@@ -10,9 +10,9 @@ import glob
 import math
 import numpy as np
 
-from character import character_from_file
-from unit import *
-from dialogue import DialogueManager
+from scripts.character import character_from_file
+from scripts.unit import *
+from scripts.dialogue import DialogueManager
 
 from tcod import path
 

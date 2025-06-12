@@ -3,15 +3,21 @@ DEMO
 * make stats do something
 * make stats go up when you level up
 * shop
-+ tavern
-    + accepting sidequests
-- armory/toybox
-    - rearrangement of items
+* tavern
+    * accepting sidequests
+* armory/toybox
+    * rearrangement of items
 * battle progression
 * item progression
 * first boss battle
-+ make sidequest maps
+* make sidequest maps
 * main menu
 + out of battle theme
-+ write bori's dialogue
-- status effects
+* write bori's dialogue
+* status effects
+* MORE STATS
+* boss theme
+
+BUGS
+- if a unit dies and they weren't first in
+  the queue, they get put first

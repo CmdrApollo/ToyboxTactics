@@ -1,4 +1,4 @@
-VERSION = "0.0.1"
+VERSION = "0.0.2"
 
 import pygame
 import random
@@ -10,26 +10,27 @@ import glob
 import math
 import numpy as np
 
-from character import character_from_file
-from unit import *
-from dialogue import DialogueManager
-from item import *
-from particle import Particle
+from scripts.character import character_from_file
+from scripts.unit import *
+from scripts.dialogue import DialogueManager
+from scripts.item import *
+from scripts.particle import Particle
+from scripts.constants import DamageType
 
 from tcod import path
 
 all_levels = [
     ("Tutorial", "level1.json"),
     ("Threadville Hooligans", "sidelevel1.json"),
-    ("YYY", "sidelevel2.json"),
+    ("Mountain Pass Bullies", "sidelevel2.json"),
     ("Face-off Against Bori", "level2.json"),
 ]
 
 level_descriptions = [
     "Replay the tutorial.",
-    "Two toys have gone missing\nfrom Threadville. The village-\npeople suspect foul-play. Find\nthe missing toys!",
-    "Sidequest #2",
-    "Battle Bori, an unrelenting\nforce of chaos. This is the\nend of the demo."
+    "Two toys have gone missing from\nThreadville. The village-people\nsuspect foul-play. Find the missing\ntoys!",
+    "There are reports that toys have\nbeen attacking people on the\nmountain pass between Threadville\nand the rest of Toyland! Get rid of the\nbad-actors!",
+    "Battle Bori, an unrelenting force\nof chaos. This is the end\nof the demo."
 ]
 
 level_challenges = [
@@ -101,7 +102,7 @@ for f in glob.glob(os.path.join('assets', 'audio', '**.wav')):
     SOUNDS.update({f.split('\\')[-1].split('.')[0]: pygame.mixer.Sound(f)})
 
 for i in SOUNDS:
-    SOUNDS[i].set_volume(0.0)
+    SOUNDS[i].set_volume(0.5)
 
 pygame.display.set_caption("Toybox Tactics")
 
@@ -304,6 +305,9 @@ def draw_unit(unit, friendly, x, y, is_selected=False, show_path=False):
     character.y = j - TILE_SIZE[1] / 4
 
     character.draw(screen, pygame.Vector2(0, 0), False, False, PAPERTEX, _tex, 'skyblue' if friendly else 'brown1', is_selected)
+
+    for p in unit.particles:
+        p.draw(screen)
 
 def draw_star(win, x, y, scale=10, rotation=0, col='lightyellow'):
     points = [
@@ -547,6 +551,7 @@ def main():
     banner_time = 3.0
 
     placing_unit = 0
+    giving_unit = 0
 
     battling = True
     won = False
@@ -568,8 +573,8 @@ def main():
 
     shop_inventory = {
         Potion: 10,
-        PaperArmorItem: 2,
-        ThumbtackItem: 2,
+        PaperArmor: 2,
+        Thumbtack: 2,
         CardboardArmor: 2,
         Toothpick: 2,
         FoilArmor: 2,
@@ -577,7 +582,7 @@ def main():
         Match: 1
     }
 
-    button_reward = 80
+    button_reward = 100
     reward_falloff = 0.75
 
     def get_reward(n):
@@ -695,6 +700,7 @@ def main():
                         curtain_timer = 2.0
 
                         SOUNDS['maintheme'].stop()
+                        SOUNDS['bossTheme'].stop()
 
                         SOUNDS['battle_win'].play()
 
@@ -714,33 +720,41 @@ def main():
                                     if unit.x == selected_pos[0] and unit.y == selected_pos[1]:
                                         if unit != selected_unit:
                                             if unit.health > 0:
-                                                if unit.armor and random.random() <= unit.armor.protection_chance + unit.defense / 100:
-                                                    add_text_popup(f"Protected!", unit.x + cam.x, unit.y + cam.y, "forestgreen")
-                                                else:
-                                                    d = selected_unit.weapon.damage
-                                                    d += random.randint(0, selected_unit.strength)
-                                                    if unit.armor: d -= random.randint(0, unit.armor.protection_value)
-                                                    add_text_popup(f"-{d}", unit.x + cam.x, unit.y + cam.y, "brown1")
-                                                    unit.health -= d
-                                                if unit.health <= 0:
-                                                    if unit in friendly_units:
-                                                        friendly_units.remove(unit)
+                                                if random.random() <= selected_unit.calculate_hit_chance():
+                                                    if random.random() <= unit.calculate_protection_chance():
+                                                        add_text_popup(f"Protected!", unit.x + cam.x, unit.y + cam.y, "forestgreen")
                                                     else:
-                                                        if selected_unit.give_xp(unit.xp_given):
-                                                            # true on level up
-                                                            add_text_popup(f"Level up!", selected_unit.x + cam.x, selected_unit.y + cam.y, "gold")
-                                                            messages.append(f"{selected_unit.name} leveled up!")
+                                                        if selected_unit.weapon:
+                                                            d = selected_unit.weapon.damage
+                                                            if selected_unit.weapon.damage_type == DamageType.FIRE and random.random() <= 0.5:
+                                                                unit.onfire = True
                                                         else:
-                                                            add_text_popup(f"+{unit.xp_given} xp!", selected_unit.x + cam.x, selected_unit.y + cam.y, "gold")
-                                                            messages.append(f"{selected_unit.name} gained {unit.xp_given} xp!")
-                                                        enemy_units.remove(unit)
+                                                            d = 0
+                                                        d += random.randint(0, selected_unit.strength)
+                                                        if unit.armor: d = max(0, d - random.randint(0, unit.armor.protection_value))
+                                                        add_text_popup(f"-{d}", unit.x + cam.x, unit.y + cam.y, "brown1")
+                                                        unit.health -= d
+                                                    if unit.health <= 0:
+                                                        if unit in friendly_units:
+                                                            friendly_units.remove(unit)
+                                                        else:
+                                                            if selected_unit.give_xp(unit.xp_given):
+                                                                # true on level up
+                                                                add_text_popup(f"Level up!", selected_unit.x + cam.x, selected_unit.y + cam.y, "gold")
+                                                                messages.append(f"{selected_unit.name} leveled up!")
+                                                            else:
+                                                                add_text_popup(f"+{unit.xp_given} xp!", selected_unit.x + cam.x, selected_unit.y + cam.y, "gold")
+                                                                messages.append(f"{selected_unit.name} gained {unit.xp_given} xp!")
+                                                            enemy_units.remove(unit)
 
-                                                        buttons += random.randint(6, 12)
+                                                            buttons += random.randint(6, 12)
 
-                                                    units.remove(unit)
-                                                    SOUNDS["smash"].play()
+                                                        units.remove(unit)
+                                                        SOUNDS["smash"].play()
+                                                    else:
+                                                        play_tap_sound()
                                                 else:
-                                                    play_tap_sound()
+                                                    add_text_popup(f"Missed!", selected_unit.x + cam.x, selected_unit.y + cam.y, "white")
                                             else:
                                                 SOUNDS["footstep"].play()
                                         break
@@ -752,11 +766,12 @@ def main():
                             x, y = from_world_pos(selected_unit.x + cam.x, selected_unit.y + cam.y)
                             x += selected_unit.character.scale * 2
                             y -= selected_unit.character.scale
-                            for i in range(len(party_inventory)):
+                            items = list(filter(lambda x: issubclass(x[0], Item), party_inventory.items()))
+                            for i, (k, v) in enumerate(items):
                                 if pygame.Rect(x, y, w, h).collidepoint(pygame.mouse.get_pos()):
-                                    if not list(party_inventory.keys())[i]().requires_target:
-                                        o = list(party_inventory.keys())[i]().on_use(selected_unit, None)
-                                        party_inventory.update({ list(party_inventory.keys())[i]: list(party_inventory.values())[i] - 1 })
+                                    if not k().requires_target:
+                                        o = k().on_use(selected_unit, None)
+                                        party_inventory.update({ k: v - 1 })
                                         if o:
                                             add_text_popup(o[0], selected_unit.x + cam.x, selected_unit.y + cam.y, o[1])
                                         selected_action = "none"
@@ -775,7 +790,7 @@ def main():
                                     selected_action = ["move", "attack", "items", "wait"][i]
                                     
                                     if selected_action == "attack":
-                                        allowed_attacks = get_grid_of_size(selected_unit, selected_unit.weapon.range)
+                                        allowed_attacks = get_grid_of_size(selected_unit, selected_unit.weapon.range if selected_unit.weapon else 1)
                                         
                                         SOUNDS["swoosh"].play()
 
@@ -831,6 +846,8 @@ def main():
                                     match i:
                                         case 0:
                                             menu = 0
+
+                                            SOUNDS['oob'].play()
                                         case 1:
                                             run = False
                         case 0:
@@ -866,6 +883,30 @@ def main():
                                             shop_inventory.pop(k)
                                     except IndexError:
                                         pass
+
+                                x, y = WIDTH * (2 / 3) - w // 2, HEIGHT // 3
+                                y += FONT.size("Shop Items")[1] + 5
+
+                                for i, (k, v) in enumerate(party_inventory.items()):
+                                    if pygame.Rect(x, y, w, h).collidepoint(mx, my):
+                                        buttons += int(k().price * (1 - sell_falloff))
+                                        if shop_inventory.get(k):
+                                            shop_inventory[k] += 1
+                                        else:
+                                            shop_inventory.update({ k: 1 })
+                                        party_inventory[k] = max(0, party_inventory[k] - 1)
+
+                                        SOUNDS['chaChing'].play()
+                                
+                                    y += h
+                                
+                                for i in range(len(party_inventory)):
+                                    try:
+                                        k = list(party_inventory.keys())[i]
+                                        if party_inventory[k] == 0:
+                                            party_inventory.pop(k)
+                                    except IndexError:
+                                        pass
                         case 1:
                             if dialogue_manager.has_dialogue():
                                 dialogue_manager.on_confirm()
@@ -893,6 +934,63 @@ def main():
                             if dialogue_manager.has_dialogue():
                                 dialogue_manager.on_confirm()
                             else:
+                                w, h = 160, 30
+                                x, y = WIDTH // 4 - w // 2, HEIGHT // 3
+
+                                y += FONT.size("Your Items")[1] + 5
+
+                                items = list(filter(lambda x: not issubclass(x[0], Item), party_inventory.items()))
+
+                                unit = character_buffer[giving_unit]
+
+                                for i, (k, v) in enumerate(items):
+                                    if pygame.Rect(x, y, w, h).collidepoint(mx, my):
+                                        if issubclass(k, Armor) and not unit.armor:
+                                            unit.armor = k()
+                                            party_inventory.update({ k: party_inventory[k] - 1})
+                                        elif issubclass(k, Weapon) and not unit.weapon:
+                                            unit.weapon = k()
+                                            party_inventory.update({ k: party_inventory[k] - 1})
+                                    y += h
+                                
+                                w, h = 100, 30
+                                x, y = WIDTH * (1 / 2) - w // 2, HEIGHT // 3
+
+                                y += FONT.size('Units')[1] + 5
+
+                                for i, unit in enumerate(character_buffer):
+                                    if pygame.Rect(x, y, w, h).collidepoint(mx, my):
+                                        giving_unit = i
+                                    y += h
+
+                                w *= 2
+                                h *= 6.5
+
+                                x, y = WIDTH * 0.75 - w // 2, HEIGHT // 3
+
+                                y += FONT.size('Selected Unit')[1] + 5
+                                y += FONT.size('Name')[1]
+
+                                bx, by, bw, bh = WIDTH * 0.75 - 120 // 2, y + h + 5, 120, 30
+                                if pygame.Rect(bx, by, bw, bh).collidepoint(mx, my):
+                                    # unequip unit
+                                    unit = character_buffer[giving_unit]
+
+                                    if unit.armor:
+                                        party_inventory.update({type(unit.armor): party_inventory[type(unit.armor)] + 1 if type(unit.armor) in party_inventory else 1})
+                                        unit.armor = None
+                                    if unit.weapon:
+                                        party_inventory.update({type(unit.weapon): party_inventory[type(unit.weapon)] + 1 if type(unit.weapon) in party_inventory else 1})
+                                        unit.weapon = None
+                                
+                                for i in range(len(shop_inventory)):
+                                    try:
+                                        k = list(party_inventory.keys())[i]
+                                        if party_inventory[k] == 0:
+                                            party_inventory.pop(k)
+                                    except IndexError:
+                                        pass
+
                                 w, h = 100, 30
                                 if pygame.Rect(WIDTH - w - 10, HEIGHT - h - 10, w, h).collidepoint(mx, my) and next_level:
                                     # TO BATTLE !!!!
@@ -901,7 +999,6 @@ def main():
                                     # schemas are forest, mountain, desert, icy, and chaos
                                     world_size, schema, nature, enemy_units, thru_dialogue, end_dialogue, available_sidequests, next_level, level_reward = level_from_file(os.path.join("assets", "levels", level_filename))
                                                                         
-                                    character_buffer = friendly_units.copy()
                                     save_characters()
                                     friendly_units = []
                                     
@@ -928,6 +1025,17 @@ def main():
 
                                     messages = []
                                     popups.clear()
+
+                                    for i in range(len(thru_dialogue[turn])):
+                                        dialogue_manager.queue_text(thru_dialogue[turn][i])
+                                    
+                                    SOUNDS['oob'].stop()
+                                    
+                                    if level_name == "Face-off Against Bori":
+                                        SOUNDS['bossTheme'].play()
+                                    else:
+                                        SOUNDS['maintheme'].play()
+
                                 if pygame.Rect(10, HEIGHT - h - 10, w, h).collidepoint(mx, my):
                                     menu = 1
 
@@ -944,6 +1052,7 @@ def main():
                 messages.append(f"You lost {reward} buttons!")
 
                 SOUNDS['maintheme'].stop()
+                SOUNDS['bossTheme'].stop()
             elif len(enemy_units) == 0:
                 battling = False
                 won = True
@@ -978,11 +1087,14 @@ def main():
                     messages.append(f"You were rewarded {level_reward} buttons!")
 
                 SOUNDS['maintheme'].stop()
+                SOUNDS['bossTheme'].stop()
 
                 SOUNDS['battle_win'].play()
 
                 for i in range(len(end_dialogue)):
                     dialogue_manager.queue_text(end_dialogue[i])
+
+                character_buffer += friendly_units.copy()
 
         if battling:
             if placed:
@@ -1006,28 +1118,37 @@ def main():
                             closest_enemy = unit
 
                     if abs(closest_enemy.x - selected_unit.x) + abs(closest_enemy.y - selected_unit.y) <= 1:    
-                        allowed_attacks = get_grid_of_size(selected_unit, selected_unit.weapon.range)
+                        allowed_attacks = get_grid_of_size(selected_unit, selected_unit.weapon.range if selected_unit.weapon else 1)
 
                         if (closest_enemy.x, closest_enemy.y) in allowed_attacks:
                             unit = closest_enemy
                             if unit.health > 0:
-                                if unit.armor and random.random() <= unit.armor.protection_chance:
-                                    add_text_popup(f"Protected!", unit.x + cam.x, unit.y + cam.y, "forestgreen")
-                                else:
-                                    d = selected_unit.weapon.damage
-                                    d += random.randint(0, selected_unit.strength)
-                                    if unit.armor: d -= random.randint(0, unit.armor.protection_value)
-                                    add_text_popup(f"-{d}", unit.x + cam.x, unit.y + cam.y, "brown1")
-                                    unit.health -= d
-                                if unit.health <= 0:
-                                    if unit in friendly_units:
-                                        friendly_units.remove(unit)
+                                if random.random() <= selected_unit.calculate_hit_chance():
+                                    if random.random() <= unit.calculate_protection_chance():
+                                        add_text_popup(f"Protected!", unit.x + cam.x, unit.y + cam.y, "forestgreen")
                                     else:
-                                        enemy_units.remove(unit)
-                                    units.remove(unit)
-                                    SOUNDS["smash"].play()
+                                        if selected_unit.weapon:
+                                            d = selected_unit.weapon.damage
+                                            if selected_unit.weapon.damage_type == DamageType.FIRE and random.random() <= 0.5:
+                                                unit.onfire = True
+                                        else:
+                                            d = 0
+                                        d += random.randint(0, selected_unit.strength)
+                                        if unit.armor: d = max(0, d - random.randint(0, unit.armor.protection_value))
+                                        add_text_popup(f"-{d}", unit.x + cam.x, unit.y + cam.y, "brown1")
+                                        unit.health -= d
+                                    if unit.health <= 0:
+                                        if unit in friendly_units:
+                                            character_buffer.append(unit)
+                                            friendly_units.remove(unit)
+                                        else:
+                                            enemy_units.remove(unit)
+                                        units.remove(unit)
+                                        SOUNDS["smash"].play()
+                                    else:
+                                        play_tap_sound()
                                 else:
-                                    play_tap_sound()
+                                    add_text_popup(f"Missed!", selected_unit.x + cam.x, selected_unit.y + cam.y, "white")
                             else:
                                 SOUNDS["footstep"].play()
 
@@ -1107,6 +1228,25 @@ def main():
 
                         if turn & 1:
                             # enemy turn
+                        
+                            idx = 0
+                            next_unit = enemy_units[idx]
+
+                            if next_unit.onfire:
+                                q = random.randint(0, 10)
+                                next_unit.health = max(0, next_unit.health - q)
+                                add_text_popup(f"-{q}", next_unit.x + cam.x, next_unit.y + cam.y, 'brown1')
+
+                                if next_unit.health <= 0:
+                                    if turn & 1:
+                                        enemy_units.remove(next_unit)
+                                    else:
+                                        friendly_units.remove(next_unit)
+                                    units.remove(next_unit)
+                                else:
+                                    if random.random() <= 0.5:
+                                        next_unit.onfire = False
+
                             current_unit = 0
                             selected_unit = enemy_units[current_unit]
                             selected_action = "none"
@@ -1114,12 +1254,30 @@ def main():
                             banner_text = "Enemy Turn"
                             banner_time = 3.0
                         else:
+                            banner_text = "Player Turn"
+                            banner_time = 3.0
+                        
+                            idx = 0
+                            next_unit = friendly_units[idx]
+
+                            if next_unit.onfire:
+                                q = random.randint(0, 10)
+                                next_unit.health = max(0, next_unit.health - q)
+                                add_text_popup(f"-{q}", next_unit.x + cam.x, next_unit.y + cam.y, 'brown1')
+
+                                if next_unit.health <= 0:
+                                    if turn & 1:
+                                        enemy_units.remove(next_unit)
+                                    else:
+                                        friendly_units.remove(next_unit)
+                                    units.remove(next_unit)
+                                else:
+                                    if random.random() <= 0.5:
+                                        next_unit.onfire = False
+
                             current_unit = 0
                             selected_unit = friendly_units[current_unit]
                             selected_action = "none"
-
-                            banner_text = "Player Turn"
-                            banner_time = 3.0
 
                         selected_unit.action_points = selected_unit.max_action_points
 
@@ -1128,6 +1286,24 @@ def main():
                     else:
                         animation_time = 0.5
                         
+                        idx = (current_unit + 1) % (len(enemy_units) if turn & 1 else len(friendly_units))
+                        next_unit = enemy_units[idx] if turn & 1 else friendly_units[idx]
+
+                        if next_unit.onfire:
+                            q = random.randint(0, 10)
+                            next_unit.health = max(0, next_unit.health - q)
+                            add_text_popup(f"-{q}", next_unit.x + cam.x, next_unit.y + cam.y, 'brown1')
+
+                            if next_unit.health <= 0:
+                                if turn & 1:
+                                    enemy_units.remove(next_unit)
+                                else:
+                                    friendly_units.remove(next_unit)
+                                units.remove(next_unit)
+                            else:
+                                if random.random() <= 0.5:
+                                    next_unit.onfire = False
+
                         current_unit += 1
                         if turn & 1:
                             # enemy turn
@@ -1143,6 +1319,9 @@ def main():
                         selected_action = "none"
                         selected_unit.action_points = selected_unit.max_action_points
                         selected_unit.done_with_turn = False
+
+            for unit in units:
+                unit.particle_update(delta, cam, from_world_pos)
 
             screen.blit(BG, (0, 0))
 
@@ -1260,8 +1439,8 @@ def main():
 
                             screen.blit(t := FONT.render(info_string, True, 'black'), (1 + mx + 150 - t.get_width() / 2, 1 + my + 5))
                             screen.blit(t := FONT.render(info_string, True, 'white'), (mx + 150 - t.get_width() / 2, my + 5))
-                            
-                            for i, line in enumerate(unit.description + ["", "Equipped with:", f"{unit.armor.name}, {unit.weapon.name}"]):
+                        
+                            for i, line in enumerate(unit.description + ["", "Equipped with:", f"{unit.armor.name if unit.armor else 'no armor'}, {unit.weapon.name if unit.weapon else 'no weapon'}"]):
                                 screen.blit(t := SMALL_FONT.render(line, True, 'black'), (1 + mx + 5, 1 + my + 45 + i * SMALL_FONT.size(line)[1]))
                                 screen.blit(t := SMALL_FONT.render(line, True, 'white'), (mx + 5, my + 45 + i * SMALL_FONT.size(line)[1]))
 
@@ -1273,8 +1452,9 @@ def main():
                 x, y = from_world_pos(selected_unit.x + cam.x, selected_unit.y + cam.y)
                 x += selected_unit.character.scale * 2
                 y -= selected_unit.character.scale
-                for i in range(len(party_inventory)):
-                    can_show_info = draw_button(screen, x, y, w, h, f"{list(party_inventory.values())[i]}x {list(party_inventory.keys())[i]().name}")
+                items = list(filter(lambda x: issubclass(x[0], Item), party_inventory.items()))
+                for i, (k, v) in enumerate(items):
+                    can_show_info = draw_button(screen, x, y, w, h, f"{v}x {k().name}")
                     y += h
 
             # draw ap bar
@@ -1367,8 +1547,8 @@ def main():
 
             match menu:
                 case -1:
-                    surf.blit(t := BIG_FONT.render(f"Battle {"Won" if won else "Lost"}!", True, "black"), (2 + WIDTH // 2 - t.get_width() // 2, 27))
-                    surf.blit(t := BIG_FONT.render(f"Battle {"Won" if won else "Lost"}!", True, "white"), (WIDTH // 2 - t.get_width() // 2, 25))
+                    surf.blit(t := BIG_FONT.render(f"Battle {'Won' if won else 'Lost'}!", True, "black"), (2 + WIDTH // 2 - t.get_width() // 2, 27))
+                    surf.blit(t := BIG_FONT.render(f"Battle {'Won' if won else 'Lost'}!", True, "white"), (WIDTH // 2 - t.get_width() // 2, 25))
 
                     w, h = 90, 30
 
@@ -1495,9 +1675,8 @@ def main():
                     surf.blit(t := FONT.render("Selected Battle", True, 'black'), (x + 1, y + 1))
                     surf.blit(t := FONT.render("Selected Battle", True, 'white'), (x, y))
 
-                    w *= 1.75
+                    w *= 1.5
                     h *= 10
-                    h += 10
 
                     y += t.get_height() + 5
 
@@ -1511,12 +1690,12 @@ def main():
                     pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, 8)
 
                     surf.blit(option_surf, (x, y))
-                    surf.blit(text := BIG_FONT.render(t, True, 'white'), (x + 5, y + 5))
+                    surf.blit(text := FONT.render(t, True, 'white'), (x + 5, y + 5))
 
                     y += 5 + text.get_height()
 
-                    surf.blit(text := FONT.render(level_descriptions[current_level], True, 'white'), (x + 5, y))
-                    y += text.get_height() + FONT.size(' ')[1]
+                    surf.blit(text := SMALL_FONT.render(level_descriptions[current_level], True, 'white'), (x + 5, y))
+                    y += text.get_height() + SMALL_FONT.size(' ')[1]
 
                     for index, challenge in enumerate(level_challenges[current_level]):
                         surf.blit(text := FONT.render(challenge, True, 'white'), (x + 5, y))
@@ -1535,14 +1714,119 @@ def main():
                     surf.blit(t := FONT.render(f"Selected Battle: {all_levels[current_level][0]}", True, 'black'), (WIDTH // 2 - t.get_width() // 2 + 1, HEIGHT - t.get_height() - 5 + 1))
                     surf.blit(t := FONT.render(f"Selected Battle: {all_levels[current_level][0]}", True, 'white'), (WIDTH // 2 - t.get_width() // 2, HEIGHT - t.get_height() - 5))
 
+                    w, h = 160, 30
+                    x, y = WIDTH // 4 - w // 2, HEIGHT // 3
+
+                    surf.blit(t := FONT.render("Your Items", True, 'black'), (x + 1, y + 1))
+                    surf.blit(t := FONT.render("Your Items", True, 'white'), (x, y))
+
+                    y += t.get_height() + 5
+
+                    items = list(filter(lambda x: not issubclass(x[0], Item), party_inventory.items()))
+
+                    for i, (k, v) in enumerate(items):
+                        t = f"{v}x {k().name}"
+                        option_surf = pygame.Surface((w, h), pygame.SRCALPHA)
+
+                        color = (0, 0, 0, 192) if pygame.Rect(x, y, w, h).collidepoint(pygame.mouse.get_pos()) else (0, 0, 0, 128)
+
+                        if len(items) == 1:
+                            pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, 8)
+                        else:
+                            if i == 0:
+                                pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, -1, 8, 8, -1, -1)
+                            elif i == len(items) - 1:
+                                pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, -1, -1, -1, 8, 8)
+                            else:
+                                pygame.draw.rect(option_surf, color, (0, 0, w, h))
+
+                        surf.blit(option_surf, (x, y))
+                        surf.blit(text := SMALL_FONT.render(t, True, 'white'), (x + 5, y + h // 2 - text.get_height() // 2))
+
+                        y += h
+
+                    w, h = 100, 30
+                    x, y = WIDTH * (1 / 2) - w // 2, HEIGHT // 3
+
+                    surf.blit(t := FONT.render("Units", True, 'black'), (x + 1, y + 1))
+                    surf.blit(t := FONT.render("Units", True, 'white'), (x, y))
+
+                    y += t.get_height() + 5
+
+                    for i, unit in enumerate(character_buffer):
+                        t = unit.name
+                        option_surf = pygame.Surface((w, h), pygame.SRCALPHA)
+
+                        if i == giving_unit:
+                            color = (255, 192, 0, 192) if pygame.Rect(x, y, w, h).collidepoint(pygame.mouse.get_pos()) else (255, 192, 0, 128)
+                        else:
+                            color = (0, 0, 0, 192) if pygame.Rect(x, y, w, h).collidepoint(pygame.mouse.get_pos()) else (0, 0, 0, 128)
+
+                        if len(character_buffer) == 1:
+                            pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, 8)
+                        else:
+                            if i == 0:
+                                pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, -1, 8, 8, -1, -1)
+                            elif i == len(character_buffer) - 1:
+                                pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, -1, -1, -1, 8, 8)
+                            else:
+                                pygame.draw.rect(option_surf, color, (0, 0, w, h))
+
+                        surf.blit(option_surf, (x, y))
+                        surf.blit(text := SMALL_FONT.render(t, True, 'white'), (x + 5, y + h // 2 - text.get_height() // 2))
+
+                        y += h
+
+                    w *= 2
+                    h *= 6.5
+
+                    x, y = WIDTH * 0.75 - w // 2, HEIGHT // 3
+
+                    surf.blit(t := FONT.render("Selected Unit", True, 'black'), (x + 1, y + 1))
+                    surf.blit(t := FONT.render("Selected Unit", True, 'white'), (x, y))
+
+                    y += t.get_height() + 5
+
+                    unit = character_buffer[giving_unit]
+
+                    t = f"{unit.name} (LVL {unit.level})"
+                    option_surf = pygame.Surface((w, h), pygame.SRCALPHA)
+
+                    color = (0, 0, 0, 192)
+
+                    pygame.draw.rect(option_surf, color, (0, 0, w, h), 0, 8)
+
+                    surf.blit(option_surf, (x, y))
+                    surf.blit(text := FONT.render(t, True, 'white'), (x + 5, y + 5))
+                    y += text.get_height()
+                    surf.blit(text := SMALL_FONT.render("\n".join([
+                        f"Max HP:   {unit.max_health}",
+                        f"Strength: {unit.strength}",
+                        f"Defense:  {unit.defense}",
+                        f"Accuracy: {unit.accuracy}",
+                        "",
+                        f"Armor:  {'none' if not unit.armor else unit.armor.name}",
+                        f"Weapon: {'none' if not unit.weapon else unit.weapon.name}"
+                    ]),
+                    True, 'white'), (x + 5, y + 5))
+
                     dialogue_manager.draw(surf)
 
+                    draw_button(surf, WIDTH * 0.75 - 120 // 2, y + h + 5, 120, 30, "Unequip Unit")
                     w, h = 100, 30
                     draw_button(surf, WIDTH - w - 10, HEIGHT - h - 10, w, h, "To Battle")
                     draw_button(surf, 10, HEIGHT - h - 10, w, h, "To Tavern")
 
             v = HEIGHT * ((1 - curtain_timer / 2.0) ** 2)
             screen.blit(surf, (0, -HEIGHT + v))
+
+        # screen.blit(battle_ss, (0, 0))
+
+        # screen.blit(txt := BIG_FONT.render("Adding a Tutorial to My Indie Game", True, 'black'), (WIDTH // 2 - txt.get_width() // 2 + 2, 27))
+        # screen.blit(txt := BIG_FONT.render("Adding a Tutorial to My Indie Game", True, 'white'), (WIDTH // 2 - txt.get_width() // 2, 25))
+
+        # screen.blit(txt := FONT.render("Toybox Tactics Devlog #2", True, 'black'), (WIDTH // 2 - txt.get_width() // 2 + 2, HEIGHT - txt.get_height() - 23))
+        # screen.blit(txt := FONT.render("Toybox Tactics Devlog #2", True, 'white'), (WIDTH // 2 - txt.get_width() // 2, HEIGHT - txt.get_height() - 25))
 
         pygame.display.flip()
     

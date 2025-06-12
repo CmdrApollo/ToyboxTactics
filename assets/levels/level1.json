@@ -154,7 +154,7 @@
         [
             [
                 "<#808080>Tutorial</>",
-                "Now it's the enemies' turn! They will",
+                "Now it's the enemy's turn! They will",
                 "move towards your units and attack them!"
             ]
         ],
@@ -179,7 +179,7 @@
 	"reward": 0,
 	"available_sidequests": [
 		"Threadville Hooligans",
-		"YYY",
+		"Mountain Pass Bullies",
 		"Face-off Against Bori"
 	],
 	"next_level": "Threadville Hooligans"

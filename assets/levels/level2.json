@@ -139,7 +139,16 @@
 	"during_battle_dialogue": [
 		[
 			[
-				"<#ff80ff>Bori</>"
+				"<#ff80ff>Bori</>",
+				"Puny toys... I will crush you!",
+				"You are no match for chaos!"
+			],
+			[
+				"<#ff8080>Milo</>",
+				"You're one to talk, Bori! We",
+				"will fell you in one fell",
+				"swoop. Prepare to meet your",
+				"demise!"
 			]
 		]
 	],
@@ -169,5 +178,5 @@
 	],
 	"reward": 0,
 	"available_sidequests": [],
-	"next_level": null
+	"next_level": "Face-off Against Bori"
 }

@@ -1,9 +1,33 @@
 {
 	"width": 10,
 	"height": 10,
-	"schema": "forest",
+	"schema": "mountain",
 	"scenery": [
 		[
+			2,
+			2,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			2,
+			2
+		],
+		[
+			2,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			0,
+			2
+		],
+		[
 			0,
 			0,
 			0,
@@ -24,50 +48,38 @@
 			0,
 			0,
 			0,
-			1,
-			0
-		],
-		[
-			0,
-			0,
-			1,
-			0,
-			0,
-			0,
-			1,
-			0,
 			0,
 			0
 		],
 		[
-			0,
-			0,
-			0,
-			0,
-			1,
-			0,
-			0,
-			0,
-			1,
-			0
+			3,
+			3,
+			3,
+			4,
+			4,
+			4,
+			4,
+			3,
+			3,
+			3
 		],
 		[
-			0,
-			1,
-			0,
-			0,
-			0,
-			0,
-			1,
-			0,
-			0,
-			0
+			3,
+			3,
+			3,
+			4,
+			4,
+			4,
+			4,
+			3,
+			3,
+			3
 		],
 		[
 			0,
 			0,
 			0,
-			1,
+			0,
 			0,
 			0,
 			0,
@@ -76,109 +88,69 @@
 			0
 		],
 		[
-			0,
-			0,
-			0,
-			0,
-			0,
-			1,
-			0,
-			0,
-			0,
-			1
+			16,
+			16,
+			16,
+			16,
+			16,
+			16,
+			16,
+			16,
+			16,
+			16
 		],
 		[
-			0,
-			0,
+			2,
 			16,
 			16,
 			16,
 			16,
 			16,
 			16,
-			1,
-			0
+			16,
+			16,
+			2
 		],
 		[
-			0,
-			0,
-			1,
+			2,
+			2,
 			16,
 			16,
 			16,
-			1,
-			16,
-			0,
-			0
-		],
-		[
-			0,
-			0,
-			16,
-			16,
-			1,
 			16,
 			16,
 			16,
-			0,
-			0
+			2,
+			2
 		]
 	],
 	"units": [
 		{
-			"type": "soldier",
-			"x": 7,
-			"y": 0
+			"type": "heavy",
+			"x": 2,
+			"y": 1
 		},
 		{
 			"type": "soldier",
-			"x": 0,
-			"y": 2
+			"x": 7,
+			"y": 1
 		}
 	],
 	"during_battle_dialogue": [
-        [
-            [
-                "<#808080>Tutorial</>",
-                "Welcome to the demo for Toybox Tactics!",
-                "To begin with, click on the yellow tiles",
-                "to place your units!"
-            ],
-            [
-                "<#808080>Tutorial</>",
-                "Afterwards, hit \"move\" next to each",
-                "unit, and hit \"attack\" once you are",
-                "close enough to an enemy!"
-            ],
-            [
-                "<#808080>Tutorial</>",
-                "Once you hit \"attack\", click on an enemy",
-                "within one of the red tiles to attack them!"
-            ]
-        ],
-        [
-            [
-                "<#808080>Tutorial</>",
-                "Now it's the enemies' turn! They will",
-                "move towards your units and attack them!"
-            ]
-        ],
-        [
-            [
-                "<#808080>Tutorial</>",
-                "Back to you! Keep hitting the enemies until",
-                "they are all taken out of combat!"
-            ]
-        ]
-    ],
+		[
+			[
+				"<#80ff80>Toto</>",
+				"Milo, Grub, look! It's the toys",
+				"we were looking for. Let's help",
+				"them!"
+			]
+		]
+	],
 	"post_battle_dialogue": [
 		[
 			"<#808080>Tutorial</>",
-			"Great work! Now that you have completed",
-			"a battle, you have some downtime with",
-			"which you can go shopping, choose your",
-			"next battle, and equip your units before",
-			"sending them back out!"
+			"Good job! You are now ready to",
+			"face Bori and finish the demo!"
 		]
 	],
 	"reward": 25,
